@@ -1,0 +1,2 @@
+# HopmnSdkChangeThoughts
+HopmnSdkWithChangeThoughtTestApp
