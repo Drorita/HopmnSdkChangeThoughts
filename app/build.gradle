@@ -1,0 +1,76 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.dodo.changethoughts'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "com.dodo.changethoughts"
+        minSdk 21
+        targetSdk 34
+        versionCode 2
+        versionName "1.1.2"
+
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    packagingOptions {
+        pickFirst 'libs/**/lib3proxy.so'
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+    android {
+        sourceSets {
+            getByName("main").assets.srcDirs("assets")
+        }
+    }
+}
+
+dependencies {
+   // implementation files('libs/ThreeProxyController.jar')
+        implementation files('libs/sdk-hopmn6-api.aar')
+ //   implementation files('libs/hopmnsdk5-clean-api.aar')
+
+    //implementation files('libs/com.im.sdk.aar')
+
+ //   implementation files('libs/proxyjsdk.jar')
+  //  implementation files('libs/appmonsdk-v2_11_r.aar')
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation 'com.google.android.material:material:1.5.0'
+    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+   // implementation project(':sdk')
+    testImplementation 'junit:junit:4.13.2'
+    androidTestImplementation 'androidx.test.ext:junit:1.1.5'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
+    implementation 'com.squareup.picasso:picasso:2.71828'
+    //MONETIZATION SDK DEPENDENCIES
+    //implementation 'com.squareup.retrofit2:converter-gson:2.9.0'
+    implementation 'com.google.android.gms:play-services-ads-identifier:18.0.1'
+  //  implementation 'ai.vfr.monetizationsdk:monetizationsdk:2.0.0'
+
+    implementation "io.insert-koin:koin-android:3.4.0"
+  //  implementation("com.github.liveproxy1:libhopmnproxy-sdk:1.0.3")
+
+    // OkHttp
+    implementation("com.squareup.okhttp3:okhttp:4.10.0")
+    implementation("com.squareup.okhttp3:logging-interceptor:4.10.0")
+    // Retrofit
+    implementation("com.squareup.retrofit2:retrofit:2.9.0")
+    implementation("com.squareup.retrofit2:converter-gson:2.9.0")
+    // GSON
+    implementation("com.google.code.gson:gson:2.8.9")
+
+
+    implementation 'com.android.volley:volley:1.2.1'
+
+}

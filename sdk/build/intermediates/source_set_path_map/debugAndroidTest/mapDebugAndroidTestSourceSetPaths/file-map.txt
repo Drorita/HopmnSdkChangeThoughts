@@ -1,0 +1,8 @@
+io.hopmon.test.sdk-core-1.0.0-0 C:\Users\temp\.gradle\caches\transforms-3\40e3d7d9c97ad635963f11adf1ceab5e\transformed\core-1.0.0\res
+io.hopmon.test.sdk-coordinatorlayout-1.0.0-1 C:\Users\temp\.gradle\caches\transforms-3\8ec844b87409dbebc5d603f1ebd122a7\transformed\coordinatorlayout-1.0.0\res
+io.hopmon.test.sdk-appcompat-1.0.0-2 C:\Users\temp\.gradle\caches\transforms-3\b02e3540c374bc0f1c63f9068dcea722\transformed\appcompat-1.0.0\res
+io.hopmon.test.sdk-androidTest-3 C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\build\generated\res\resValues\androidTest\debug
+io.hopmon.test.sdk-mergeDebugAndroidTestResources-4 C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\build\intermediates\incremental\debugAndroidTest\mergeDebugAndroidTestResources\merged.dir
+io.hopmon.test.sdk-mergeDebugAndroidTestResources-5 C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\build\intermediates\incremental\debugAndroidTest\mergeDebugAndroidTestResources\stripped.dir
+io.hopmon.test.sdk-debugAndroidTest-6 C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\build\intermediates\merged_res\debugAndroidTest\mergeDebugAndroidTestResources
+io.hopmon.test.sdk-debug-7 C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\build\intermediates\packaged_res\debug\packageDebugResources

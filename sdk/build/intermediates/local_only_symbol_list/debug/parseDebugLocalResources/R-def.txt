@@ -1,0 +1,21 @@
+R_DEF: Internal format may change without notice
+local
+drawable ic_android_notify
+drawable progress_image
+string hopmon_ad_publisher_id
+string hopmon_ad_tag_id
+string hopmon_base_url
+string hopmon_connected
+string hopmon_connecting
+string hopmon_country_key
+string hopmon_disconnected
+string hopmon_foreground
+string hopmon_get_endpoint
+string hopmon_interval_key
+string hopmon_loader
+string hopmon_lp_base_url
+string hopmon_preference_file_key
+string hopmon_publisher_key
+string hopmon_reg_endpoint
+string hopmon_sdk_name
+string hopmon_uid_key

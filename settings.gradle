@@ -1,0 +1,30 @@
+pluginManagement {
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        google()
+        mavenCentral()
+        maven {
+            url("https://ctvmonetizationsdk.jfrog.io/artifactory/monetizationsdk-gradle-release-local")
+            credentials {
+                username "andre@vfr.ai"
+                password "eyJ2ZXIiOiIyIiwidHlwIjoiSldUIiwiYWxnIjoiUlMyNTYiLCJraWQiOiJKRnhZRzF4SGNlYXNpTjVOOFVFc2w0TTlRcWl0VWFJRGtob1dERWlGcnI4In0.eyJzdWIiOiJqZmFjQDAxaDdkems1Z2M2dnoxMW44enI0NTkwcTA1L3VzZXJzL2FuZHJlQHZmci5haSIsInNjcCI6ImFwcGxpZWQtcGVybWlzc2lvbnMvZ3JvdXBzOlwicmVhZGVyc1wiIiwiYXVkIjpbImpmcnRAKiIsImpmYWNAKiIsImpmZXZ0QCoiLCJqZm1kQCoiLCJqZmNvbkAqIl0sImlzcyI6ImpmZmVAMDFoN2R6azVnYzZ2ejExbjh6cjQ1OTBxMDUiLCJpYXQiOjE2OTI1MzU1MDQsImp0aSI6ImY4OGExODAwLWY4ZGMtNDhiZC1iNGYwLWQ5MjViNjhhYzI5NiJ9.LXZ4I4o6XDZwDvdNpHTMTz4VNGNrIb2w0q04v9SR-KIaXle-132q1DNDc_UPSgxycMCy7eFzfEcB_mWmxOSWBEfpEAouXbS7Ii5ZerbQs-qNQj3oNMIYbpiJx_3gv4EWNCluw0v86pUqlQqwmRjCjWkiHQ8JeViotYSFk6YUsReRTCDVvj5spRBqwfj7vszBsosqEXO2yRcOgC3qFNliTdukLajfL5zTB17N-hbSGj4NCj5GuC6ZfE8ZakDiLhiR5-31IJlYzagbhW9iqZ9TMypu5edtRYtiJExVLhwv4wRW5kpv4Xr94nAt6wynnityuyphCWUcVBeSOPL9GV4PVQ"
+            }
+        }
+        maven {
+            url "https://jitpack.io"
+            credentials {
+                username = "liveproxy1"
+                password = "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"
+            }
+        }
+    }
+}
+rootProject.name = "ChangeThoughts"
+include ':app',':sdk'

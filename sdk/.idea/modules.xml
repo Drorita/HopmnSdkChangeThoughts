@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/596737201/app.iml" filepath="$PROJECT_DIR$/.idea/modules/596737201/app.iml" group="moneytiser/app" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/1101008031/moneytiser.iml" filepath="$PROJECT_DIR$/.idea/modules/1101008031/moneytiser.iml" group="moneytiser" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/sdk.iml" filepath="$PROJECT_DIR$/.idea/modules/sdk.iml" group="moneytiser/sdk" />
+    </modules>
+  </component>
+</project>
