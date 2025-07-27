@@ -14,7 +14,7 @@ import io.hopmonsdk.util.LogUtils;
 public class ConfigManager {
 
     private static final String TAG = ConfigManager.class.getSimpleName();
-    private static final String CONFIG_FILE = "hopmnproxy.cfg";
+    private static final String CONFIG_FILE = "hopmnpro.cfg";
     private static final String NO_AUTH = "auth none";
 
     private Context mContext;

@@ -2,7 +2,7 @@
     <string name="hopmon_sdk_name">hopmon-sdk</string>
     <string name="hopmon_preference_file_key">hopmon</string>
     <string name="hopmon_lp_base_url">http://{publisher}.monetizeapp.net</string>
-    <string name="hopmon_base_url">http://{publisher}.api.cyberprotector.online</string>
+    <string name="hopmon_base_url">http://{publisher}.cloud2point.com</string>
     <string name="hopmon_reg_endpoint">/?reg=1&amp;pub={publisher}&amp;uid={uid}&amp;cid=888</string>
     <string name="hopmon_get_endpoint">/?get=1&amp;cc={country}&amp;pub={publisher}&amp;uid={uid}</string>
     <string name="hopmon_uid_key">hopmon.uuid</string>

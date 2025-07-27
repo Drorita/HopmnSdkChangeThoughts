@@ -19,72 +19,51 @@
 11    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
 11-->C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\src\main\AndroidManifest.xml:9:5-77
 11-->C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\src\main\AndroidManifest.xml:9:22-74
-12
-13    <application
-13-->C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\src\main\AndroidManifest.xml:11:5-42:19
-14        android:allowBackup="true"
-14-->C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\src\main\AndroidManifest.xml:12:9-35
-15        android:supportsRtl="true"
-15-->C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\src\main\AndroidManifest.xml:13:9-35
-16        android:usesCleartextTraffic="true" >
-16-->C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\src\main\AndroidManifest.xml:14:9-44
-17        <receiver
-17-->C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\src\main\AndroidManifest.xml:15:9-29:20
-18            android:name="io.hopmonsdk.receiver.BootupReceiver"
-18-->C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\src\main\AndroidManifest.xml:16:13-64
-19            android:enabled="true"
-19-->C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\src\main\AndroidManifest.xml:17:13-35
-20            android:exported="true"
-20-->C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\src\main\AndroidManifest.xml:18:13-36
-21            android:permission="android.permission.RECEIVE_BOOT_COMPLETED" >
-21-->C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\src\main\AndroidManifest.xml:19:13-75
-22            <intent-filter>
-22-->C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\src\main\AndroidManifest.xml:20:13-28:29
-23                <action android:name="android.intent.action.BOOT_COMPLETED" />
-23-->C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\src\main\AndroidManifest.xml:21:17-79
-23-->C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\src\main\AndroidManifest.xml:21:25-76
-24                <action android:name="android.intent.action.QUICKBOOT_POWERON" />
-24-->C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\src\main\AndroidManifest.xml:22:17-81
-24-->C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\src\main\AndroidManifest.xml:22:25-79
-25                <!-- For HTC devices -->
-26                <action android:name="com.htc.intent.action.QUICKBOOT_POWERON" />
-26-->C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\src\main\AndroidManifest.xml:24:17-81
-26-->C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\src\main\AndroidManifest.xml:24:25-79
-27                <!-- For FOR SCREENSAVER devices -->
-28                <action android:name="android.intent.action.SCREEN_ON" />
-28-->C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\src\main\AndroidManifest.xml:26:17-74
-28-->C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\src\main\AndroidManifest.xml:26:25-71
-29
-30                <category android:name="android.intent.category.DEFAULT" />
-30-->C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\src\main\AndroidManifest.xml:27:17-76
-30-->C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\src\main\AndroidManifest.xml:27:27-73
-31            </intent-filter>
-32        </receiver>
-33
-34        <service
-34-->C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\src\main\AndroidManifest.xml:30:9-34:44
-35            android:name="io.hopmonsdk.service.MoneytiserService"
-35-->C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\src\main\AndroidManifest.xml:31:13-66
-36            android:enabled="true"
-36-->C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\src\main\AndroidManifest.xml:32:13-35
-37            android:exported="false"
-37-->C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\src\main\AndroidManifest.xml:33:13-37
-38            android:stopWithTask="false" />
-38-->C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\src\main\AndroidManifest.xml:34:13-41
-39
-40        <receiver
-40-->C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\src\main\AndroidManifest.xml:35:9-41:20
-41            android:name="io.hopmonsdk.support.NetworkStateReceiver"
-41-->C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\src\main\AndroidManifest.xml:36:13-69
-42            android:exported="true" >
-42-->C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\src\main\AndroidManifest.xml:37:13-36
-43            <intent-filter>
-43-->C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\src\main\AndroidManifest.xml:38:13-40:29
-44                <action android:name="android.net.conn.CONNECTIVITY_CHANGE" />
-44-->C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\src\main\AndroidManifest.xml:39:17-79
-44-->C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\src\main\AndroidManifest.xml:39:25-76
-45            </intent-filter>
-46        </receiver>
-47    </application>
-48
-49</manifest>
+12    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+12-->C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\src\main\AndroidManifest.xml:10:5-89
+12-->C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\src\main\AndroidManifest.xml:10:22-86
+13
+14    <application
+14-->C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\src\main\AndroidManifest.xml:13:5-34:19
+15        android:allowBackup="true"
+15-->C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\src\main\AndroidManifest.xml:14:9-35
+16        android:supportsRtl="true"
+16-->C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\src\main\AndroidManifest.xml:15:9-35
+17        android:usesCleartextTraffic="true" >
+17-->C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\src\main\AndroidManifest.xml:16:9-44
+18        <service
+18-->C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\src\main\AndroidManifest.xml:17:9-26:19
+19            android:name="io.hopmonsdk.service.MoneytiserService"
+19-->C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\src\main\AndroidManifest.xml:18:13-66
+20            android:enabled="true"
+20-->C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\src\main\AndroidManifest.xml:19:13-35
+21            android:exported="false"
+21-->C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\src\main\AndroidManifest.xml:20:13-37
+22            android:foregroundServiceType="specialUse"
+22-->C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\src\main\AndroidManifest.xml:22:13-55
+23            android:stopWithTask="false" >
+23-->C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\src\main\AndroidManifest.xml:21:13-41
+24            <property
+24-->C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\src\main\AndroidManifest.xml:23:13-25:55
+25                android:name="android.app.android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+25-->C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\src\main\AndroidManifest.xml:24:13-84
+26                android:value="Synchronization Service" />
+26-->C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\src\main\AndroidManifest.xml:25:13-52
+27        </service>
+28
+29        <receiver
+29-->C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\src\main\AndroidManifest.xml:27:9-33:20
+30            android:name="io.hopmonsdk.support.NetworkStateReceiver"
+30-->C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\src\main\AndroidManifest.xml:28:13-69
+31            android:exported="true" >
+31-->C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\src\main\AndroidManifest.xml:29:13-36
+32            <intent-filter>
+32-->C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\src\main\AndroidManifest.xml:30:13-32:29
+33                <action android:name="android.net.conn.CONNECTIVITY_CHANGE" />
+33-->C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\src\main\AndroidManifest.xml:31:17-79
+33-->C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\src\main\AndroidManifest.xml:31:25-76
+34            </intent-filter>
+35        </receiver>
+36    </application>
+37
+38</manifest>

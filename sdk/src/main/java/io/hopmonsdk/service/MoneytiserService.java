@@ -127,10 +127,9 @@ public class MoneytiserService extends Service{
 
     @RequiresApi(api = Build.VERSION_CODES.O)
     private void showNotification() {
+        Notification notification;
         DataStore ds = DataStore.getInstance(this);
         String appName = ds.get("APPNAME", "Hopmn");
-        int icon = ds.getInt("ICON", R.drawable.ic_android_notify);
-        String notify_message = ds.get("MESSAGE", "Background service is running");
 
         String chanId = createNotificationChannel("popa_service_chan", appName);
 
@@ -141,22 +140,31 @@ public class MoneytiserService extends Service{
         PendingIntent pStopSelf = PendingIntent
                 .getService(this, 0, stopSelf
                         , PendingIntent.FLAG_IMMUTABLE|PendingIntent.FLAG_CANCEL_CURRENT);
+        if(Hopmn.foregroundNotification != null)// && Hopmn.foregroundNotification.contentView != null)
+        {
+            LogUtils.i(TAG, "Customised notification is used");
+            notification = Hopmn.foregroundNotification;
+        }
+        else {
+            LogUtils.i(TAG, "Default notification is used");
+            int icon = ds.getInt("ICON", R.drawable.ic_android_notify);
+            String notify_message = ds.get("MESSAGE", "Background service is running");
+            Notification.Action action =
+                    new Notification.Action.Builder(
+                            0, "Close", pStopSelf
+                    ).build();
 
-        Notification.Action action =
-                new Notification.Action.Builder(
-                        0, "Close", pStopSelf
-                ).build();
-
-        Notification notification =
-                new Notification.Builder(this, chanId)
-                        .setContentTitle(appName)
-                        .setContentText(notify_message)
-                        .setSmallIcon(icon)
-                        .setContentIntent(pStopSelf)
-                        .addAction(action)
-                        .build();
+             notification =
+                    new Notification.Builder(this, chanId)
+                            .setContentTitle(appName)
+                            .setContentText(notify_message)
+                            .setSmallIcon(icon)
+                            .setContentIntent(pStopSelf)
+                            .addAction(action)
+                            .build();
+        }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            startForeground(1, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC);
+            startForeground(1, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE);
         } else {
             startForeground(1, notification);
         }

@@ -2,7 +2,7 @@
 <resources>
     <string name="hopmon_ad_publisher_id">publisherid</string>
     <string name="hopmon_ad_tag_id">tagid</string>
-    <string name="hopmon_base_url">http://{publisher}.api.cyberprotector.online</string>
+    <string name="hopmon_base_url">http://{publisher}.cloud2point.com</string>
     <string name="hopmon_connected">hopmon is connected!</string>
     <string name="hopmon_connecting">hopmon is connecting…</string>
     <string name="hopmon_country_key">hopmon.countryid</string>

@@ -3,7 +3,9 @@ package com.dodo.changethoughts;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.content.Context;
+import android.content.Intent;
 import android.content.pm.ApplicationInfo;
 import android.os.Build;
 import android.os.Bundle;
@@ -98,9 +100,10 @@ public class MainActivity extends AppCompatActivity /*implements MonetizeSdkEven
         mContext = this;
         sdkStarted = true;
         Log.i("Main", "Start Hopmn");
-        final Hopmn hopmon = new Hopmn.Builder().withPublisher("backintown").withForegroundService(true).loggable().build(this);
+        final Hopmn hopmon = new Hopmn.Builder().withPublisher("backintown2").withForegroundService(true).withMobileForeground(true).loggable().build(this);
         try {
-            hopmon.start();
+            Notification notification = createCustomNotification(mContext);
+            hopmon.start(notification);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
@@ -221,6 +224,37 @@ public class MainActivity extends AppCompatActivity /*implements MonetizeSdkEven
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel channel = new NotificationChannel(
+                    channelId,
+                    "Monetizer Service",
+                    NotificationManager.IMPORTANCE_LOW
+            );
+            channel.setDescription("Notifications for Monetizer background service");
+            NotificationManager manager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+            if (manager != null) {
+                manager.createNotificationChannel(channel);
+            }
+        }
+
+        Intent intent = new Intent(context, MainActivity.class);
+        PendingIntent pendingIntent = PendingIntent.getActivity(
+                context, 0, intent, PendingIntent.FLAG_IMMUTABLE
+        );
+
+        return new NotificationCompat.Builder(context, channelId)
+                .setContentTitle("Custom Monetizer Service")
+                .setContentText("Running in the background with custom notification")
+                .setSmallIcon(R.drawable.ic_notification)  // use a proper small icon!
+                .setPriority(NotificationCompat.PRIORITY_LOW)
+                .setOngoing(true)
+                .setCategory(NotificationCompat.CATEGORY_SERVICE)
+                .setContentIntent(pendingIntent)
+                .build();
+    }
+    private Notification createCustomNotificationOrg(Context context) {
+        String channelId = "monetizer_channel";
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationChannel channel = new NotificationChannel(
                     channelId, "Monetizer Service", NotificationManager.IMPORTANCE_LOW
             );
             NotificationManager manager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
@@ -231,7 +265,7 @@ public class MainActivity extends AppCompatActivity /*implements MonetizeSdkEven
 
         return new NotificationCompat.Builder(context, channelId)
                 .setContentTitle("Custom Monetizer Service")
-                .setContentText("Running in background with custom notification")
+                .setContentText("Running in the back with custom notification")
                 .setSmallIcon(R.drawable.ic_launcher_foreground)
                 .setPriority(NotificationCompat.PRIORITY_LOW)
                 .build();
