@@ -26,5 +26,5 @@ dependencyResolutionManagement {
         }
     }
 }
-rootProject.name = "ChangeThoughts"
+rootProject.name = "ChangeThoughtsHopmnSdk"
 include ':app',':sdk'
