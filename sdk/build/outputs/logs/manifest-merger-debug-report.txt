@@ -1,79 +1,79 @@
 -- Merging decision tree log ---
 manifest
-ADDED from C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\src\main\AndroidManifest.xml:2:1-35:12
-INJECTED from C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\src\main\AndroidManifest.xml:2:1-35:12
+ADDED from C:\dror\projects\sdks\HopmnSdkChangeThoughts\sdk\src\main\AndroidManifest.xml:2:1-35:12
+INJECTED from C:\dror\projects\sdks\HopmnSdkChangeThoughts\sdk\src\main\AndroidManifest.xml:2:1-35:12
 	package
-		ADDED from C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\src\main\AndroidManifest.xml:3:5-24
-		INJECTED from C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\src\main\AndroidManifest.xml
+		ADDED from C:\dror\projects\sdks\HopmnSdkChangeThoughts\sdk\src\main\AndroidManifest.xml:3:5-24
+		INJECTED from C:\dror\projects\sdks\HopmnSdkChangeThoughts\sdk\src\main\AndroidManifest.xml
 	xmlns:android
-		ADDED from C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\src\main\AndroidManifest.xml:2:11-69
+		ADDED from C:\dror\projects\sdks\HopmnSdkChangeThoughts\sdk\src\main\AndroidManifest.xml:2:11-69
 uses-permission#android.permission.INTERNET
-ADDED from C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\src\main\AndroidManifest.xml:5:5-67
+ADDED from C:\dror\projects\sdks\HopmnSdkChangeThoughts\sdk\src\main\AndroidManifest.xml:5:5-67
 	android:name
-		ADDED from C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\src\main\AndroidManifest.xml:5:22-64
+		ADDED from C:\dror\projects\sdks\HopmnSdkChangeThoughts\sdk\src\main\AndroidManifest.xml:5:22-64
 uses-permission#android.permission.ACCESS_NETWORK_STATE
-ADDED from C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\src\main\AndroidManifest.xml:6:5-79
+ADDED from C:\dror\projects\sdks\HopmnSdkChangeThoughts\sdk\src\main\AndroidManifest.xml:6:5-79
 	android:name
-		ADDED from C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\src\main\AndroidManifest.xml:6:22-76
+		ADDED from C:\dror\projects\sdks\HopmnSdkChangeThoughts\sdk\src\main\AndroidManifest.xml:6:22-76
 uses-permission#android.permission.RECEIVE_BOOT_COMPLETED
-ADDED from C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\src\main\AndroidManifest.xml:7:5-81
+ADDED from C:\dror\projects\sdks\HopmnSdkChangeThoughts\sdk\src\main\AndroidManifest.xml:7:5-81
 	android:name
-		ADDED from C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\src\main\AndroidManifest.xml:7:22-78
+		ADDED from C:\dror\projects\sdks\HopmnSdkChangeThoughts\sdk\src\main\AndroidManifest.xml:7:22-78
 uses-permission#android.permission.WAKE_LOCK
-ADDED from C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\src\main\AndroidManifest.xml:8:5-68
+ADDED from C:\dror\projects\sdks\HopmnSdkChangeThoughts\sdk\src\main\AndroidManifest.xml:8:5-68
 	android:name
-		ADDED from C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\src\main\AndroidManifest.xml:8:22-65
+		ADDED from C:\dror\projects\sdks\HopmnSdkChangeThoughts\sdk\src\main\AndroidManifest.xml:8:22-65
 uses-permission#android.permission.FOREGROUND_SERVICE
-ADDED from C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\src\main\AndroidManifest.xml:9:5-77
+ADDED from C:\dror\projects\sdks\HopmnSdkChangeThoughts\sdk\src\main\AndroidManifest.xml:9:5-77
 	android:name
-		ADDED from C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\src\main\AndroidManifest.xml:9:22-74
+		ADDED from C:\dror\projects\sdks\HopmnSdkChangeThoughts\sdk\src\main\AndroidManifest.xml:9:22-74
 uses-permission#android.permission.FOREGROUND_SERVICE_SPECIAL_USE
-ADDED from C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\src\main\AndroidManifest.xml:10:5-89
+ADDED from C:\dror\projects\sdks\HopmnSdkChangeThoughts\sdk\src\main\AndroidManifest.xml:10:5-89
 	android:name
-		ADDED from C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\src\main\AndroidManifest.xml:10:22-86
+		ADDED from C:\dror\projects\sdks\HopmnSdkChangeThoughts\sdk\src\main\AndroidManifest.xml:10:22-86
 application
-ADDED from C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\src\main\AndroidManifest.xml:13:5-34:19
+ADDED from C:\dror\projects\sdks\HopmnSdkChangeThoughts\sdk\src\main\AndroidManifest.xml:13:5-34:19
 	android:supportsRtl
-		ADDED from C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\src\main\AndroidManifest.xml:15:9-35
+		ADDED from C:\dror\projects\sdks\HopmnSdkChangeThoughts\sdk\src\main\AndroidManifest.xml:15:9-35
 	android:allowBackup
-		ADDED from C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\src\main\AndroidManifest.xml:14:9-35
+		ADDED from C:\dror\projects\sdks\HopmnSdkChangeThoughts\sdk\src\main\AndroidManifest.xml:14:9-35
 	android:usesCleartextTraffic
-		ADDED from C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\src\main\AndroidManifest.xml:16:9-44
+		ADDED from C:\dror\projects\sdks\HopmnSdkChangeThoughts\sdk\src\main\AndroidManifest.xml:16:9-44
 service#io.hopmonsdk.service.MoneytiserService
-ADDED from C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\src\main\AndroidManifest.xml:17:9-26:19
+ADDED from C:\dror\projects\sdks\HopmnSdkChangeThoughts\sdk\src\main\AndroidManifest.xml:17:9-26:19
 	android:enabled
-		ADDED from C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\src\main\AndroidManifest.xml:19:13-35
+		ADDED from C:\dror\projects\sdks\HopmnSdkChangeThoughts\sdk\src\main\AndroidManifest.xml:19:13-35
 	android:exported
-		ADDED from C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\src\main\AndroidManifest.xml:20:13-37
+		ADDED from C:\dror\projects\sdks\HopmnSdkChangeThoughts\sdk\src\main\AndroidManifest.xml:20:13-37
 	android:stopWithTask
-		ADDED from C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\src\main\AndroidManifest.xml:21:13-41
+		ADDED from C:\dror\projects\sdks\HopmnSdkChangeThoughts\sdk\src\main\AndroidManifest.xml:21:13-41
 	android:foregroundServiceType
-		ADDED from C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\src\main\AndroidManifest.xml:22:13-55
+		ADDED from C:\dror\projects\sdks\HopmnSdkChangeThoughts\sdk\src\main\AndroidManifest.xml:22:13-55
 	android:name
-		ADDED from C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\src\main\AndroidManifest.xml:18:13-66
+		ADDED from C:\dror\projects\sdks\HopmnSdkChangeThoughts\sdk\src\main\AndroidManifest.xml:18:13-66
 property#android.app.android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE
-ADDED from C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\src\main\AndroidManifest.xml:23:13-25:55
+ADDED from C:\dror\projects\sdks\HopmnSdkChangeThoughts\sdk\src\main\AndroidManifest.xml:23:13-25:55
 	android:value
-		ADDED from C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\src\main\AndroidManifest.xml:25:13-52
+		ADDED from C:\dror\projects\sdks\HopmnSdkChangeThoughts\sdk\src\main\AndroidManifest.xml:25:13-52
 	android:name
-		ADDED from C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\src\main\AndroidManifest.xml:24:13-84
+		ADDED from C:\dror\projects\sdks\HopmnSdkChangeThoughts\sdk\src\main\AndroidManifest.xml:24:13-84
 receiver#io.hopmonsdk.support.NetworkStateReceiver
-ADDED from C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\src\main\AndroidManifest.xml:27:9-33:20
+ADDED from C:\dror\projects\sdks\HopmnSdkChangeThoughts\sdk\src\main\AndroidManifest.xml:27:9-33:20
 	android:exported
-		ADDED from C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\src\main\AndroidManifest.xml:29:13-36
+		ADDED from C:\dror\projects\sdks\HopmnSdkChangeThoughts\sdk\src\main\AndroidManifest.xml:29:13-36
 	android:name
-		ADDED from C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\src\main\AndroidManifest.xml:28:13-69
+		ADDED from C:\dror\projects\sdks\HopmnSdkChangeThoughts\sdk\src\main\AndroidManifest.xml:28:13-69
 intent-filter#action:name:android.net.conn.CONNECTIVITY_CHANGE
-ADDED from C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\src\main\AndroidManifest.xml:30:13-32:29
+ADDED from C:\dror\projects\sdks\HopmnSdkChangeThoughts\sdk\src\main\AndroidManifest.xml:30:13-32:29
 action#android.net.conn.CONNECTIVITY_CHANGE
-ADDED from C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\src\main\AndroidManifest.xml:31:17-79
+ADDED from C:\dror\projects\sdks\HopmnSdkChangeThoughts\sdk\src\main\AndroidManifest.xml:31:17-79
 	android:name
-		ADDED from C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\src\main\AndroidManifest.xml:31:25-76
+		ADDED from C:\dror\projects\sdks\HopmnSdkChangeThoughts\sdk\src\main\AndroidManifest.xml:31:25-76
 uses-sdk
-INJECTED from C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\src\main\AndroidManifest.xml reason: use-sdk injection requested
-INJECTED from C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\src\main\AndroidManifest.xml
-INJECTED from C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\src\main\AndroidManifest.xml
+INJECTED from C:\dror\projects\sdks\HopmnSdkChangeThoughts\sdk\src\main\AndroidManifest.xml reason: use-sdk injection requested
+INJECTED from C:\dror\projects\sdks\HopmnSdkChangeThoughts\sdk\src\main\AndroidManifest.xml
+INJECTED from C:\dror\projects\sdks\HopmnSdkChangeThoughts\sdk\src\main\AndroidManifest.xml
 	android:targetSdkVersion
-		INJECTED from C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\src\main\AndroidManifest.xml
+		INJECTED from C:\dror\projects\sdks\HopmnSdkChangeThoughts\sdk\src\main\AndroidManifest.xml
 	android:minSdkVersion
-		INJECTED from C:\dror\LiveProxy\APPs\ChangeThoughts-testhopmn\sdk\src\main\AndroidManifest.xml
+		INJECTED from C:\dror\projects\sdks\HopmnSdkChangeThoughts\sdk\src\main\AndroidManifest.xml
