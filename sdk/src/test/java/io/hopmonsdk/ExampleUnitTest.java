@@ -1,4 +1,4 @@
-package io.hopmon;
+package io.hopmonsdk;
 
 import org.junit.Test;
 

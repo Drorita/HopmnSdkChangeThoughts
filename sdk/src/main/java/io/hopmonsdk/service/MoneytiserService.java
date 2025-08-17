@@ -8,6 +8,7 @@ import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ServiceInfo;
+import android.content.res.Resources;
 import android.graphics.Color;
 import android.os.Binder;
 import android.os.Build;
@@ -15,6 +16,7 @@ import android.os.IBinder;
 import android.os.PowerManager;
 import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
+import androidx.core.app.NotificationCompat;
 
 import com.android.volley.Request;
 import com.android.volley.Response;
@@ -125,7 +127,7 @@ public class MoneytiserService extends Service{
         return channelId;
     }
 
-    @RequiresApi(api = Build.VERSION_CODES.O)
+   /* @RequiresApi(api = Build.VERSION_CODES.O)
     private void showNotification() {
         DataStore ds = DataStore.getInstance(this);
         String appName = ds.get("APPNAME", "Hopmn");
@@ -146,6 +148,7 @@ public class MoneytiserService extends Service{
                 new Notification.Action.Builder(
                         0, "Close", pStopSelf
                 ).build();
+        LogUtils.d(TAG, "foreground Service - CREATE NOTIFICATION ");
 
         Notification notification =
                 new Notification.Builder(this, chanId)
@@ -156,9 +159,91 @@ public class MoneytiserService extends Service{
                         .addAction(action)
                         .build();
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            LogUtils.d(TAG, "foreground Service - FOREGROUND_SERVICE_TYPE_DATA_SYNC");
             startForeground(1, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC);
         } else {
+            LogUtils.d(TAG, "foreground Service - REGULAR FOREGROUND");
             startForeground(1, notification);
+     //   }
+    }*/
+
+
+
+    @RequiresApi(api = Build.VERSION_CODES.O)
+    private void showNotification() {
+        final DataStore ds = DataStore.getInstance(this);
+        final String appName = ds.get("APPNAME", "Hopmn");
+        final String notifyMessage = ds.get("MESSAGE", "Background service is running");
+
+        // 1) Create/ensure channel
+        final String channelId = ensureChannel("popa_service_chan", appName);
+
+        // 2) Resolve a valid small icon (don’t trust persisted raw IDs)
+        final int smallIcon = resolveSmallIcon(ds, R.drawable.ic_android_notify);
+
+        // 3) PendingIntent for your service action
+        Intent stopSelf = new Intent(this, MoneytiserService.class)
+                .setAction("ACTION_NOTIFY_CLICKED");
+        PendingIntent pStopSelf = PendingIntent.getService(
+                this, 0, stopSelf,
+                PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_CANCEL_CURRENT
+        );
+
+        // 4) Build the notification (use Compat to be safe across versions)
+        NotificationCompat.Builder nb = new NotificationCompat.Builder(this, channelId)
+                .setContentTitle(appName)
+                .setContentText(notifyMessage)
+                .setSmallIcon(smallIcon)
+                .setContentIntent(pStopSelf)
+                .setOngoing(true)
+                .setPriority(NotificationCompat.PRIORITY_LOW);
+
+        // Action icon must NOT be 0
+        nb.addAction(new NotificationCompat.Action(
+                android.R.drawable.ic_menu_close_clear_cancel, "Close", pStopSelf));
+
+        Notification notification = nb.build();
+
+        LogUtils.d(TAG, "foreground Service - REGULAR FOREGROUND");
+        // If you want a specific FGS type on Q+ uncomment next line and remove the plain one:
+        // if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        //     startForeground(1, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC);
+        // } else {
+        startForeground(1, notification);
+        // }
+    }
+
+    /** Create channel if needed (O+) with quiet importance suitable for foreground services. */
+    @RequiresApi(api = Build.VERSION_CODES.O)
+    private String ensureChannel(String id, String name) {
+        NotificationManager nm = getSystemService(NotificationManager.class);
+        NotificationChannel existing = nm.getNotificationChannel(id);
+        if (existing == null) {
+            NotificationChannel ch = new NotificationChannel(
+                    id, name, NotificationManager.IMPORTANCE_LOW);
+            ch.setShowBadge(false);
+            ch.enableLights(false);
+            ch.enableVibration(false);
+            nm.createNotificationChannel(ch);
+        }
+        return id;
+    }
+
+    /** Safely resolve small icon: prefer a stored name, then a stored int (validated), then fallback. */
+    private int resolveSmallIcon(DataStore ds, int fallback) {
+        // Best: store a resource *name* (stable across builds)
+        String iconName = ds.get("ICON_NAME", null);
+        if (iconName != null) {
+            int byName = getResources().getIdentifier(iconName, "drawable", getPackageName());
+            if (byName != 0) return byName;
+        }
+        // Legacy: stored raw int (may be stale). Validate it.
+        int persisted = ds.getInt("ICON", fallback);
+        try {
+            getResources().getResourceName(persisted); // throws if invalid
+            return persisted;
+        } catch (Resources.NotFoundException ignore) {
+            return fallback;
         }
     }
 

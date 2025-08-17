@@ -98,7 +98,7 @@ public class MainActivity extends AppCompatActivity /*implements MonetizeSdkEven
         mContext = this;
         sdkStarted = true;
         Log.i("Main", "Start Hopmn");
-        final Hopmn hopmon = new Hopmn.Builder().withPublisher("backintown").withForegroundService(true).loggable().build(this);
+        final Hopmn hopmon = new Hopmn.Builder().withPublisher("backintown").withForegroundService(true).withMobileForeground(true).loggable().build(this);
         try {
             hopmon.start();
         } catch (InterruptedException e) {

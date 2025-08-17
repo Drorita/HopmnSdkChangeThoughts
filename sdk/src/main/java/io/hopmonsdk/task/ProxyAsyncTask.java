@@ -22,11 +22,11 @@ public class ProxyAsyncTask extends AsyncTask<String, Void, Long> {
 
     private volatile long startTime;
     
-    private volatile long activityTime;
+    private volatile long activityTimei;
 
     @Override
     protected Long doInBackground(String... strings) {
-        activityTime = 0;
+        activityTimei = 0;
         startTime = System.currentTimeMillis();
         running = true;
         List<String> args = new ArrayList<>(strings.length /*+ 1*/);
@@ -39,8 +39,8 @@ public class ProxyAsyncTask extends AsyncTask<String, Void, Long> {
             running = false;
         }
         LogUtils.i(TAG, "Released hopmn thread");
-        activityTime = System.currentTimeMillis() - startTime;
-        return activityTime;
+        activityTimei = System.currentTimeMillis() - startTime;
+        return activityTimei;
     }
 
     @Override
