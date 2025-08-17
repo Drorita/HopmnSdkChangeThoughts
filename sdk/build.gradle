@@ -78,8 +78,8 @@ afterEvaluate {
             register("sdkRelease", MavenPublication) {
                 from(components["release"])
                 groupId = (project.findProperty("group") ?: "com.github.Drorita").toString()
-                artifactId = "hopmnd"                 // <- coordinates consumers will use
-                version = (project.findProperty("version") ?: "v2.0.1").toString()
+                artifactId = "HopmnSdkChangeThoughts"                 // <- coordinates consumers will use
+                version = (project.findProperty("version") ?: "v2.0.2").toString()
 
                 pom {
                     name.set("Hopmn prox")
