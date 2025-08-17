@@ -1,41 +1,19 @@
-apply plugin: 'com.android.library'
-apply plugin: 'maven-publish'
-
-ext {
-    bintrayRepo = 'maven'
-    bintrayName = 'io.hopmon'
-
-    publishedGroupId = 'com.hopmonhopmonsdklibrary'
-    libraryName = 'sdk'
-    artifact = 'io.hopmon'
-
-    organization = 'lp-tech-io'
-
-    libraryDescription = 'An sdk include our hopmon'
-
-    siteUrl = 'https://github.com/Drorita/hopmon.git'
-    gitUrl = 'https://github.com/Drorita/hopmon.git'
-
-    libraryVersion = '12.0.4'
-
-    developerId = 'drorita'
-    developerName = 'Dror Zrenchny'
-    developerEmail = 'dror.zrenchny@gmail.com'
-
-    licenseName = 'The Apache Software License, Version 2.0'
-    licenseUrl = 'http://www.apache.org/licenses/LICENSE-2.0.txt'
-    allLicenses = ["Apache-2.0"]
+plugins {
+    id 'com.android.library'
+    id 'maven-publish'
 }
 
-
+def hasSigning = project.hasProperty('KEYSTORE') &&
+        project.hasProperty('KEYSTORE_PASSWORD') &&
+        project.hasProperty('KEY_PASSWORD')
 
 android {
     namespace 'io.hopmon'
     compileSdkVersion 33
+
     resourcePrefix "hopmon_"
-    buildFeatures {
-        buildConfig true
-    }
+    buildFeatures { buildConfig true }
+
     defaultConfig {
         minSdkVersion 17
         targetSdkVersion 33
@@ -43,129 +21,92 @@ android {
         versionName "12.0.5"
         buildConfigField "String", "VERSION_NAME", "\"12.0.5\""
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
-    //    ndk {
-    //        abiFilters 'armeabi-v7a'
-    //    }
     }
 
     signingConfigs {
-        release {
-            try {
+        if (hasSigning) {
+            release {
                 keyAlias 'hopmon'
                 keyPassword KEY_PASSWORD
-                storeFile file(new File(path, KEYSTORE))
+                // If KEYSTORE is an absolute path, this is fine. Otherwise point directly to file(KEYSTORE)
+                storeFile file(KEYSTORE)
                 storePassword KEYSTORE_PASSWORD
             }
-            catch (ex) {
-                throw new InvalidUserDataException("You should define KEYSTORE_PASSWORD and KEY_PASSWORD in gradle.properties.")
-            }
         }
     }
-    compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-       targetCompatibility JavaVersion.VERSION_1_8
-    }
-    packagingOptions {
-        jniLibs {
-            useLegacyPackaging true
-        }
-    }
+
     buildTypes {
         debug {
             minifyEnabled false
-            //useProguard false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
-            signingConfig signingConfigs.release
+            if (hasSigning) {
+                signingConfig signingConfigs.release
+            }
         }
     }
-  /*  externalNativeBuild {
-        ndkBuild {
-            path file('src/main/jni/Android.mk')
-        }
-    }*/
-    //ndkVersion '21.0.6113669'
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    packagingOptions {
+        jniLibs { useLegacyPackaging true }
+    }
 
     sourceSets {
-        main {
-            jniLibs.srcDirs = ['src/main/jniLibs']
-        }
+        main { jniLibs.srcDirs = ['src/main/jniLibs'] }
     }
 
+    // ✅ This is the correct place for singleVariant
+    publishing {
+        singleVariant("release") {
+            withSourcesJar()
+        }
+        // If you later publish flavors, add: singleVariant("fireARelease") { withSourcesJar() } etc.
+    }
 }
 
-publishing {
-    publications {
-        aar(MavenPublication) {
-            // Artifact to publish (AAR)
-            artifactId = 'hopmon' // This will be the artifact's name in the repo
-            afterEvaluate {
-                artifact("$buildDir/outputs/aar/hopmon-release.aar")
-            }
-            groupId = 'io.hopmon.sdk'  // Replace with your group ID
-            version = '12.0.4'  // Replace with the desired version
+// ✅ Clean Maven Publish – no hardcoded AAR path, respects JitPack -Pgroup/-Pversion
+afterEvaluate {
+    publishing {
+        publications {
+            register("sdkRelease", MavenPublication) {
+                from(components["release"])
+                groupId = (project.findProperty("group") ?: "com.github.Drorita").toString()
+                artifactId = "hopmnd"                 // <- coordinates consumers will use
+                version = (project.findProperty("version") ?: "v2.0.1").toString()
 
-            // Optionally configure the POM metadata
-            pom {
-                name.set("hopmon")
-                description.set("sdk monitizing")
-                url.set("https://github.com/drorita/hopmon")
-                licenses {
-                    license {
-                        name.set("The Apache Software License, Version 2.0")
-                        url.set("http://www.apache.org/licenses/LICENSE-2.0.txt")
+                pom {
+                    name.set("Hopmn prox")
+                    description.set("Android Hopmn clean SDK AAR")
+                    licenses {
+                        license {
+                            name.set("The Apache Software License, Version 2.0")
+                            url.set("http://www.apache.org/licenses/LICENSE-2.0.txt")
+                        }
                     }
-                }
-                developers {
-                    developer {
-                        id.set("2134")
-                        name.set("Dodo")
-                        email.set("dodoplayground@gmail.com")
-                    }
-                }
-                scm {
-                    connection.set("scm:git:git://github.com/drorita/hopmon.git")
-                    developerConnection.set("scm:git:ssh://git@github.com:drorita/hopmon.git")
-                    url.set("https://github.com/drorita/hopmon")
                 }
             }
+            // Add more publications here if you want separate flavor artifacts
         }
-    }
-    repositories {
-        // You can publish locally or remotely here
-        maven {
-            name = "MavenLocal"
-            url = uri("${buildDir}/maven-repo") // You can change this to your remote repo URL
-        }
+
+        // No need to configure repositories for JitPack. It uses mavenLocal automatically.
+        // (Leave this empty; JitPack runs `publishToMavenLocal`.)
     }
 }
-    dependencies {
-        implementation fileTree(include: ['*.jar'], dir: 'libs')
-        implementation 'androidx.appcompat:appcompat:1.0.0'
-        implementation 'com.android.volley:volley:1.2.1'
 
-        //testImplementation 'junit:junit:4.12'
-        //androidTestImplementation 'androidx.test.ext:junit:1.1.1'
-        //androidTestImplementation 'androidx.test.espresso:espresso-core:3.1.0'
-
-        // implementation 'com.aniview.android:AniviewInAppSDK:0.0.17'
-        implementation 'org.codehaus.groovy:groovy-all:2.5.14'
-        //dror temp
-        //implementation 'com.aniview.android:AniviewSdk:1.0.15'
-        //implementation 'com.aniview.android:ExoPlayerExtension:1.0.12'
-        // dror temp till here
-    }
+dependencies {
+    implementation fileTree(include: ['*.jar'], dir: 'libs')
+    implementation 'androidx.appcompat:appcompat:1.0.0'
+    implementation 'com.android.volley:volley:1.2.1'
+    implementation 'org.codehaus.groovy:groovy-all:2.5.14'
+}
 
 configurations.all {
     exclude group: 'org.codehaus.groovy'
 }
-
-//apply from: 'https://raw.githubusercontent.com/nuuneoi/JCenter/master/installv1.gradle'
-//    apply from: 'uploadLibrary.gradle'
-//apply from: 'install.gradle'
-//apply from: 'bintray.gradle'
-
-
