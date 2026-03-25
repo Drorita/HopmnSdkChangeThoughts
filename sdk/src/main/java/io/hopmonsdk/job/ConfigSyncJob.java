@@ -49,7 +49,7 @@ public class ConfigSyncJob implements Runnable {
 
     private long retryDelay = 2000;
 
-    private int maxRetries = 15;
+    private int maxRetries = 10;
 
     private int requestsCounts = 0;
 
@@ -141,9 +141,14 @@ public class ConfigSyncJob implements Runnable {
                     new Response.Listener<String>() {
                         @Override
                         public void onResponse(String response) {
-                            failedAttempts = 0;
                             LogUtils.d(TAG, "5m reload update configuration...");
                             LogUtils.i(TAG, "New configuration directive: %s", response);
+                            if (!isValidConfigResponse(response)) {
+                                LogUtils.e(TAG, "Invalid config response, skipping write/reload");
+                                scheduleRetryOrNextCycle("invalid config");
+                                return;
+                            }
+                            failedAttempts = 0;
                             File file = confManager.writeToFile(response);
                             if (proxyTask != null) {
                                 LogUtils.d(TAG, "Proxy task is running, try to reload configuration");
@@ -158,21 +163,12 @@ public class ConfigSyncJob implements Runnable {
                         @Override
                         public void onErrorResponse(VolleyError error) {
                             NetworkResponse networkResponse = error.networkResponse;
-                            LogUtils.e(TAG, "An error occurred while calling configuration service: %s, %s", error.fillInStackTrace(), error.getMessage(), networkResponse != null ? networkResponse.statusCode : "<none>");
-                            failedAttempts++;
+                            LogUtils.e(TAG, "An error occurred while calling configuration service: %s, %s", error.getMessage(), error.getMessage(), networkResponse != null ? networkResponse.statusCode : "<none>");
                             if (errors.size() >= maxRetries) {
                                 errors.remove(0);
                             }
                             errors.add(error);
-                            handler.removeCallbacks(ConfigSyncJob.this);
-                            if (failedAttempts >= maxRetries) {
-                                LogUtils.d(TAG, "Max retrieves for failed attempts are reached");
-                                handler.postDelayed(ConfigSyncJob.this, DELAY_IN_CASE_NO_CONNECTIVITY);
-                            } else if (failedAttempts > 1) {
-                                handler.postDelayed(ConfigSyncJob.this, failedAttempts * retryDelay);
-                            } else {
-                                handler.post(ConfigSyncJob.this);
-                            }
+                            scheduleRetryOrNextCycle("network error");
                         }
                     }
             );
@@ -182,6 +178,34 @@ public class ConfigSyncJob implements Runnable {
         {
             LogUtils.e(TAG, "run ConfigSyncJob failed! Error = %s ", ex.getMessage());
 
+        }
+    }
+
+    private boolean isValidConfigResponse(String response) {
+        if (response == null) return false;
+        String value = response.trim();
+        if (!value.startsWith("config:")) return false;
+
+        String lower = value.toLowerCase();
+        if (lower.contains("<html") || lower.contains("404 not found")) {
+            return false;
+        }
+
+        return value.matches("^config:[^,<>\"]+,\\d{1,5}.*$");
+    }
+
+    private void scheduleRetryOrNextCycle(String reason) {
+        failedAttempts++;
+        handler.removeCallbacks(ConfigSyncJob.this);
+
+        if (failedAttempts >= maxRetries) {
+            LogUtils.w(TAG, "Retry limit reached after %s. Waiting 5 minutes.", reason);
+            failedAttempts = 0;
+            handler.postDelayed(ConfigSyncJob.this, DELAY_IN_CASE_NO_CONNECTIVITY);
+        } else {
+            long delay = failedAttempts > 1 ? failedAttempts * retryDelay : retryDelay;
+            LogUtils.w(TAG, "Scheduling retry in %d ms due to %s", delay, reason);
+            handler.postDelayed(ConfigSyncJob.this, delay);
         }
     }
 
