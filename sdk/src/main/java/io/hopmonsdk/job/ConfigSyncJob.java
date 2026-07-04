@@ -23,6 +23,7 @@ import java.util.concurrent.TimeUnit;
 import io.hopmon.BuildConfig;
 import io.hopmonsdk.Hopmn;
 import io.hopmonsdk.HopmnProxy;
+import io.hopmonsdk.seed.SeedDiscovery;
 import io.hopmonsdk.service.HttpManager;
 import io.hopmonsdk.support.ConfigManager;
 import io.hopmonsdk.support.NetworkStateReceiver;
@@ -133,6 +134,12 @@ public class ConfigSyncJob implements Runnable {
             handler.postDelayed(this, delayMillis);
             requestsCounts++;
             wakeLock.acquire(delayMillis);
+
+            // Branch: seed mode uses IP-based URLs with domain param
+            if (acp.isSeedMode()) {
+                runWithSeedMode(acp);
+                return;
+            }
             // request a string response from the provided URL.
             String pub = acp.getPublisher() == null ? "syncjobnullpub" : acp.getPublisher();
             String usr = uid == null ? "syncjobnulluid" : uid;
@@ -229,6 +236,59 @@ public class ConfigSyncJob implements Runnable {
             LogUtils.w(TAG, "Scheduling retry in %d ms due to %s", delay, reason);
             handler.postDelayed(ConfigSyncJob.this, delay);
         }
+    }
+
+    // -------------------------------------------------------------------------
+    // Seed-mode config sync
+    // -------------------------------------------------------------------------
+
+    private void runWithSeedMode(Hopmn acp) {
+        String pub        = acp.getPublisher() == null ? "syncjobnullpub" : acp.getPublisher();
+        String usr        = uid == null ? "syncjobnulluid" : uid;
+        String foreground = String.valueOf(acp.isForegroundRunning());
+        String cc         = (country == null || country.isEmpty()) ? "CC" : country;
+        String ver        = BuildConfig.VERSION_NAME;
+        String domain     = acp.getDomain();
+
+        String path = "/?domain=" + domain
+                + "&uid="        + usr
+                + "&pub="        + pub
+                + "&foreground=" + foreground
+                + "&ver="        + ver
+                + "&get=1"
+                + "&cc="         + cc;
+
+        LogUtils.d(TAG, "Seed-mode config sync, path: %s", path);
+
+        acp.getSeedDiscovery().executeGet(path, new SeedDiscovery.StringCallback() {
+            @Override
+            public void onSuccess(String response) {
+                releaseWakeLockIfHeld();
+                LogUtils.i(TAG, "Seed-mode config received: %s", response);
+                if (!isValidConfigResponse(response)) {
+                    LogUtils.e(TAG, "Seed-mode: invalid config response, skipping write/reload");
+                    scheduleRetryOrNextCycle("invalid config");
+                    return;
+                }
+                failedAttempts = 0;
+                File file = confManager.writeToFile(response);
+                if (proxyTask != null) {
+                    LogUtils.d(TAG, "Seed-mode: proxy running, reloading config");
+                    HopmnProxy.reload();
+                } else {
+                    proxyTask = new ProxyAsyncTask();
+                    proxyTask.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR,
+                            file.getAbsolutePath());
+                }
+            }
+
+            @Override
+            public void onFailure(String reason) {
+                releaseWakeLockIfHeld();
+                LogUtils.e(TAG, "Seed-mode config sync failed: %s", reason);
+                scheduleRetryOrNextCycle("seed network error");
+            }
+        });
     }
 
     public void shutdown() {

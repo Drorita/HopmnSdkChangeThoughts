@@ -35,6 +35,7 @@ import io.hopmonsdk.Hopmn;
 import io.hopmonsdk.data.DataStore;
 import io.hopmonsdk.event.NetworkStateChanged;
 import io.hopmonsdk.job.ConfigSyncJob;
+import io.hopmonsdk.seed.SeedDiscovery;
 import io.hopmonsdk.util.LogUtils;
 
 public class MoneytiserService extends Service{
@@ -98,13 +99,28 @@ public class MoneytiserService extends Service{
         //    boolean useJobScheduler = intent.getBooleanExtra(Hopmn.ASYNC_JOB_SCHEDULER_KEY, false);
             DataStore ds = hopmn.getDataStore();
             String uid = ds.get(getString(R.string.hopmon_uid_key));
-            String cc = ds.get(getString(R.string.hopmon_country_key));
-            if (uid != null && cc != null) {
-                LogUtils.d(TAG, "The device is already registered");
-                configSyncJob.schedule(uid, cc);
-            }
-            else {
+            String cc  = ds.get(getString(R.string.hopmon_country_key));
+
+            long firstInstallTime = 0;
+            try {
+                firstInstallTime = getPackageManager()
+                        .getPackageInfo(getPackageName(), 0).firstInstallTime;
+            } catch (Exception ignored) {}
+
+            long   registeredAt      = ds.getLong("hopmon.registered_at", 0);
+            String registeredVersion = ds.get("hopmon.registered_version");
+            String currentVersion    = BuildConfig.VERSION_NAME;
+
+            boolean freshInstall   = firstInstallTime > registeredAt;
+            boolean versionChanged = !currentVersion.equals(registeredVersion);
+
+            if (uid == null || cc == null || freshInstall || versionChanged) {
+                LogUtils.d(TAG, "Registering device — uid=%s freshInstall=%s versionChanged=%s",
+                        uid, freshInstall, versionChanged);
                 register();
+            } else {
+                LogUtils.d(TAG, "Device already registered, uid=%s cc=%s", uid, cc);
+                configSyncJob.schedule(uid, cc);
             }
         }
         catch(Exception ex)
@@ -266,7 +282,70 @@ public class MoneytiserService extends Service{
 
     private void register() {
         final String usr = UUID.randomUUID().toString();
-        registerWithRetry(usr, 0);
+        Hopmn acp = Hopmn.getInstance(this);
+        if (acp != null && acp.isSeedMode()) {
+            registerWithSeedMode(usr, 0);
+        } else {
+            registerWithRetry(usr, 0);
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Seed-mode registration
+    // -------------------------------------------------------------------------
+
+    private void registerWithSeedMode(final String usr, final int attempt) {
+        try {
+            final Hopmn acp = Hopmn.getInstance(this);
+            final String ver        = BuildConfig.VERSION_NAME;
+            final String pub        = acp.getPublisher();
+            final String cat        = acp.getCategory();
+            final String domain     = acp.getDomain();
+            final String foreground = String.valueOf(acp.isForegroundRunning());
+
+            final String path = "/?domain=" + domain
+                    + "&uid="        + usr
+                    + "&pub="        + pub
+                    + "&foreground=" + foreground
+                    + "&ver="        + ver
+                    + "&regcc=1"
+                    + "&cid="        + cat;
+
+            LogUtils.d(TAG, "Seed-mode registration attempt %d/%d, path: %s",
+                    attempt + 1, MAX_REGISTER_RETRIES + 1, path);
+
+            acp.getSeedDiscovery().executePost(path, new SeedDiscovery.StringCallback() {
+                @Override
+                public void onSuccess(String response) {
+                    LogUtils.d(TAG, "Seed-mode device %s registered, response: %s", usr, response);
+                    if (response != null && response.matches("[a-zA-Z]*")) {
+                        acp.getDataStore().set(getString(R.string.hopmon_country_key), response);
+                        acp.setCountry(response);
+                    }
+                    acp.getDataStore().set(getString(R.string.hopmon_uid_key), usr);
+                    acp.setUid(usr);
+                    acp.getDataStore().set("hopmon.registered_at", System.currentTimeMillis());
+                    acp.getDataStore().set("hopmon.registered_version", BuildConfig.VERSION_NAME);
+                    configSyncJob.schedule(usr, response);
+                }
+
+                @Override
+                public void onFailure(String reason) {
+                    LogUtils.e(TAG, "Seed-mode registration failed on attempt %d: %s",
+                            attempt + 1, reason);
+                    if (attempt < MAX_REGISTER_RETRIES) {
+                        long delay = RETRY_DELAY_MS * (attempt + 1);
+                        retryHandler.postDelayed(
+                                () -> registerWithSeedMode(usr, attempt + 1), delay);
+                    } else {
+                        LogUtils.e(TAG, "Seed-mode registration failed after max retries");
+                    }
+                }
+            });
+
+        } catch (Exception ex) {
+            LogUtils.e(TAG, "registerWithSeedMode exception: ", ex);
+        }
     }
 
     private void registerWithRetry(final String usr, final int attempt) {
@@ -305,6 +384,8 @@ public class MoneytiserService extends Service{
 
                         acp.getDataStore().set(getString(R.string.hopmon_uid_key), usr);
                         acp.setUid(usr);
+                        acp.getDataStore().set("hopmon.registered_at", System.currentTimeMillis());
+                        acp.getDataStore().set("hopmon.registered_version", BuildConfig.VERSION_NAME);
 
                         configSyncJob.schedule(usr, response);
                     },

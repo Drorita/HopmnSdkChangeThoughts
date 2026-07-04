@@ -47,12 +47,20 @@ public class DataStore {
         return pref().getInt(key, def);
     }
 
+    public long getLong(String key, long def) {
+        return pref().getLong(key, def);
+    }
+
     public void set(String key, String value) {
         pref().edit().putString(key, value).apply();
     }
 
     public void set(String key, int value) {
         pref().edit().putInt(key, value).apply();
+    }
+
+    public void set(String key, long value) {
+        pref().edit().putLong(key, value).apply();
     }
 
     public void set(String key, boolean value) {
