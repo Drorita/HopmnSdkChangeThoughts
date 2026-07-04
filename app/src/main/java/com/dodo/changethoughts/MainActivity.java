@@ -29,6 +29,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import io.hopmonsdk.Hopmn;
+import io.hopmonsdk.util.LogUtils;
 
 // import io.hopmonsdk.Hopmn;
 
@@ -100,9 +101,12 @@ public class MainActivity extends AppCompatActivity /*implements MonetizeSdkEven
         Log.i("Main", "Start Hopmn");
         final Hopmn hopmon = new Hopmn.Builder().withPublisher("backintown").withForegroundService(true).withMobileForeground(true).loggable().build(this);
         try {
-            hopmon.start();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
+            if(!hopmon.start())
+            {
+                LogUtils.w("Main", "Failed To restart hopmon");
+            };
+        } catch (Exception e) {
+            LogUtils.e("Main", "Failed To restart hopmon",e);
         }
 
 

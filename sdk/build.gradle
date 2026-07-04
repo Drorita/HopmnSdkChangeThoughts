@@ -9,17 +9,17 @@ def hasSigning = project.hasProperty('KEYSTORE') &&
 
 android {
     namespace 'io.hopmon'
-    compileSdkVersion 33
+    compileSdkVersion 36
 
     resourcePrefix "hopmon_"
     buildFeatures { buildConfig true }
 
     defaultConfig {
         minSdkVersion 17
-        targetSdkVersion 33
+        targetSdkVersion 35
         versionCode 6
-        versionName "12.0.5"
-        buildConfigField "String", "VERSION_NAME", "\"12.0.5\""
+        versionName "15.0.5"
+        buildConfigField "String", "VERSION_NAME", "\"15.0.5\""
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
     }
 
@@ -41,7 +41,7 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
         release {
-            minifyEnabled false
+            minifyEnabled true
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
             if (hasSigning) {
                 signingConfig signingConfigs.release

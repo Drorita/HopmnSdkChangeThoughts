@@ -43,13 +43,13 @@ public class ConfigSyncJob implements Runnable {
 
     private List<Throwable> errors;
 
-    private Handler handler = new Handler();
+    private final Handler handler = new Handler();
 
     private PowerManager.WakeLock wakeLock;
 
-    private long retryDelay = 2000;
+    private final long retryDelay = 2000;
 
-    private int maxRetries = 10;
+    private final int maxRetries = 10;
 
     private int requestsCounts = 0;
 
@@ -62,7 +62,8 @@ public class ConfigSyncJob implements Runnable {
     private static final long DELAY_IN_CASE_NO_CONNECTIVITY  = 5*60*1000; // 5 minutes
 
     private NetworkStateReceiver connectivityChangedBroadcastReceiver;
-
+    private boolean scheduled = false;
+    private boolean shutdown = false;
     public ConfigSyncJob(Context ctx, PowerManager.WakeLock wl) {
         try {
             Hopmn acp = Hopmn.getInstance(ctx);
@@ -85,15 +86,23 @@ public class ConfigSyncJob implements Runnable {
     }
 
     public void schedule(String userId, String cc) {
-        if (proxyTask == null || !proxyTask.isRunning()) {
-            uid = userId;
-            country = cc;
-            handler.removeCallbacks(this);
-            handler.post(this);
-            LogUtils.d(TAG, "Scheduled configuration synchronization job");
-        } else {
-            LogUtils.w(TAG, "The hopmnproxy task already running, cannot reschedule a new one");
+        uid = userId;
+        country = cc;
+        if (shutdown) {
+            LogUtils.w(TAG, "ConfigSyncJob is shutdown - ignoring schedule");
+            return;
         }
+
+        if (scheduled) {
+            LogUtils.d(TAG, "ConfigSyncJob already scheduled - skipping duplicate schedule");
+            return;
+        }
+        scheduled = true;
+
+        handler.removeCallbacks(this);
+        handler.post(this);
+        LogUtils.d(TAG, "Scheduled configuration synchronization job");
+
     }
 
     public void reschedule()
@@ -112,7 +121,12 @@ public class ConfigSyncJob implements Runnable {
 
     @Override
     public void run() {
-
+        if (shutdown || !scheduled) {
+            LogUtils.d(TAG, "ConfigSyncJob run ignored. shutdown=%s scheduled=%s",
+                    String.valueOf(shutdown),
+                    String.valueOf(scheduled));
+            return;
+        }
         try {
             Hopmn acp = Hopmn.getInstance(context);
             long delayMillis = acp.getDelayMillis() - SystemClock.elapsedRealtime() % 1000;
@@ -181,6 +195,14 @@ public class ConfigSyncJob implements Runnable {
         }
     }
 
+    private void releaseWakeLockIfHeld() {
+        try {
+            if (wakeLock != null && wakeLock.isHeld()) {
+                wakeLock.release();
+            }
+        } catch (Exception ignored) {
+        }
+    }
     private boolean isValidConfigResponse(String response) {
         if (response == null) return false;
         String value = response.trim();
@@ -211,16 +233,24 @@ public class ConfigSyncJob implements Runnable {
 
     public void shutdown() {
         LogUtils.d(TAG, "Shutdown configuration synchronization job");
-        if(connectivityChangedBroadcastReceiver != null){
-        context.unregisterReceiver(connectivityChangedBroadcastReceiver);
-        }
-        if(wakeLock.isHeld()){
-            wakeLock.release();
-            }
+
+        shutdown = true;
+        scheduled = false;
         handler.removeCallbacks(this);
+
+        if (connectivityChangedBroadcastReceiver != null) {
+            try {
+                context.unregisterReceiver(connectivityChangedBroadcastReceiver);
+            } catch (Exception ignored) {}
+            connectivityChangedBroadcastReceiver = null;
+        }
+        if (wakeLock != null && wakeLock.isHeld()) {
+            wakeLock.release();
+        }
         if (proxyTask != null) {
             HopmnProxy.stop();
             proxyTask.cancel(true);
+            proxyTask = null;
         }
     }
 
