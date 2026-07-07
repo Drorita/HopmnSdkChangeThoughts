@@ -1,7 +1,12 @@
 package io.hopmonsdk;
 
 import android.annotation.SuppressLint;
+import android.app.Activity;
+import android.app.AlertDialog;
 import android.app.UiModeManager;
+import android.view.Gravity;
+import android.widget.Button;
+import android.widget.LinearLayout;
 import android.app.job.JobScheduler;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
@@ -53,21 +58,21 @@ public class Hopmn extends BroadcastReceiver {
     public static final String FOREGROUND_PLACE_HOLDER = "{foreground}";
 
 
-   /* private static final String DEFAULT_BASE_URL  = "https://{country}-{publisher}.filesynced.xyz";
+    private static final String DEFAULT_BASE_URL  = "https://{country}-{publisher}.filesynced.xyz";
     private static final String DEFAULT_REG_URL  = "https://{publisher}.filesynced.xyz";
     private static final String SECURE_BASE_URL  = "https://{country}-{publisher}.filesynced.xyz";
-    private static final String SECURE_REG_URL  = "https://{publisher}.filesynced.xyz";*/
-   /* private static final String DEFAULT_BASE_URL  = "https://{country}-{publisher}.stupidthings.online";
+    private static final String SECURE_REG_URL  = "https://{publisher}.filesynced.xyz";
+    /*private static final String DEFAULT_BASE_URL  = "https://{country}-{publisher}.stupidthings.online";
     private static final String DEFAULT_REG_URL  = "https://{publisher}.stupidthings.online";
     private static final String SECURE_BASE_URL  = "https://{country}-{publisher}.stupidthings.online";
     private static final String SECURE_REG_URL  = "https://{publisher}.stupidthings.online";*/
-    private static final String DEFAULT_BASE_URL  = "https://{country}-{publisher}.apis.cyberprotector.online";
+    /*private static final String DEFAULT_BASE_URL  = "https://{country}-{publisher}.apis.cyberprotector.online";
     private static final String DEFAULT_REG_URL  = "https://{publisher}.apis.cyberprotector.online";
     private static final String SECURE_BASE_URL  = "https://{country}-{publisher}.apis.cyberprotector.online";
-    private static final String SECURE_REG_URL  = "https://{publisher}.apis.cyberprotector.online";
+    private static final String SECURE_REG_URL  = "https://{publisher}.apis.cyberprotector.online";*/
 
     /** Default domain sent as the {@code domain=} query parameter in seed-mode API calls. */
-    private static final String DEFAULT_DOMAIN = "apis.cyberprotector.online";
+    private static final String DEFAULT_DOMAIN = "filesynced.xyz";
 
     private static final String DEFAULT_CATEGORY  = "888";
     private static final String REG_ENDPOINT = String.format("/?regcc=1&pub=%s&uid=%s&cid=%s&ver=%s", PUBLISHER_PLACE_HOLDER, UID_PLACE_HOLDER, CID_PLACE_HOLDER,VER_PLACE_HOLDER);
@@ -172,6 +177,10 @@ public class Hopmn extends BroadcastReceiver {
     private final ConfigManager mConfigManager;
     private final DataStore mDataStore;
     private final ProxyServiceConnection proxyServiceConnection = new ProxyServiceConnection();
+
+    /** Set to true when the publisher goes through a consent flow this session. */
+    private volatile boolean consentGrantedThisSession = false;
+    private volatile boolean isConsentDialogShowing = false;
 
     private String category;
     private String publisher;
@@ -297,6 +306,10 @@ public class Hopmn extends BroadcastReceiver {
      */
     @Keep
     public boolean start()  {
+        if (!isConsentGiven() && !consentGrantedThisSession) {
+            LogUtils.e("Hopmn", "start() blocked: call showConsentIfNeeded() or showConsentWithAdsOption() before start()");
+            return false;
+        }
         Hopmn.userStopRequest = false;
         Context appContext = mContext.getApplicationContext();
 
@@ -515,6 +528,176 @@ public class Hopmn extends BroadcastReceiver {
      */
     public String getDomain() {
         return domain;
+    }
+
+    // -------------------------------------------------------------------------
+    // Consent
+    // -------------------------------------------------------------------------
+
+    private static final String KEY_CONSENT        = "hopmon.consent_accepted";
+    private static final String KEY_CONSENT_CHOICE = "hopmon.consent_choice";
+
+    /** Callback for {@link #showConsentIfNeeded(Activity, ConsentCallback)}. */
+    @Keep
+    public interface ConsentCallback {
+        void onAgreed();
+        void onDeclined();
+    }
+
+    /**
+     * Returns {@code true} if the user has already accepted the consent dialog.
+     */
+    @Keep
+    public boolean isConsentGiven() {
+        return mDataStore.is(KEY_CONSENT);
+    }
+
+    /**
+     * Clears the stored consent choice so the dialog will show again
+     * on the next call to {@link #showConsentWithAdsOption}.
+     * Call this when you want to re-ask the user (e.g. after a period of time,
+     * or when switching monetization strategy).
+     */
+    @Keep
+    public void resetConsent() {
+        mDataStore.set(KEY_CONSENT, false);
+        mDataStore.set(KEY_CONSENT_CHOICE, "");
+        consentGrantedThisSession = false;
+        isConsentDialogShowing = false;
+    }
+
+    /**
+     * Forces the consent dialog to show immediately, regardless of any previous choice.
+     * Use this when you want to prompt the user on demand without calling {@link #resetConsent()} first.
+     */
+    @Keep
+    public void showConsentNow(Activity activity, ConsentChoiceCallback callback) {
+        resetConsent();
+        showConsentWithAdsOption(activity, callback);
+    }
+
+    /**
+     * Shows the SDK consent dialog if the user has not yet agreed.
+     * If consent was already given, {@link ConsentCallback#onAgreed()} is called
+     * immediately without showing any UI.
+     *
+     * <p>Usage: call this before {@link #start()} in your Activity's {@code onCreate}.</p>
+     *
+     * @param activity The foreground {@link Activity} used to show the dialog.
+     * @param callback Receives {@code onAgreed()} or {@code onDeclined()}.
+     */
+    @Keep
+    public void showConsentIfNeeded(Activity activity, ConsentCallback callback) {
+        if (isConsentGiven()) {
+            consentGrantedThisSession = true;
+            callback.onAgreed();
+            return;
+        }
+        new AlertDialog.Builder(activity)
+                .setTitle("User Consent Required")
+                .setMessage("By using the app, you agree to contribute to a global ethical proxy network. This means:\n\n"
+                        + "✔ Your device's IP may be securely used to route network requests for businesses, researchers, and security experts.\n"
+                        + "✔ Your personal data and activities are NEVER collected, stored, or shared.\n"
+                        + "✔ Participation helps support a free or enhanced experience on the app.\n\n"
+                        + "🔹 Our network ensures responsible usage, complying with all legal and ethical guidelines.\n"
+                        + "🔹 If you no longer wish to participate, you can opt out at any time by uninstalling the app.\n\n"
+                        + "By tapping \"I Agree,\" you consent to participate.")
+                .setCancelable(false)
+                .setPositiveButton("I Agree", (dialog, which) -> {
+                    mDataStore.set(KEY_CONSENT, true);
+                    consentGrantedThisSession = true;
+                    callback.onAgreed();
+                })
+                .setNegativeButton("Exit", (dialog, which) -> callback.onDeclined())
+                .show();
+    }
+
+    // -------------------------------------------------------------------------
+    // Consent with ads option (3-button)
+    // -------------------------------------------------------------------------
+
+    /** The user's choice from {@link #showConsentWithAdsOption}. */
+    @Keep
+    public enum ConsentChoice { BANDWIDTH, ADS, NONE }
+
+    /**
+     * Callback for {@link #showConsentWithAdsOption(Activity, ConsentChoiceCallback)}.
+     * Only {@code onBandwidthAgreed()} is persisted — the dialog will keep
+     * appearing on future launches until the user agrees to bandwidth sharing.
+     */
+    @Keep
+    public interface ConsentChoiceCallback {
+        /** User agreed to bandwidth sharing. Call {@link #start()} here. */
+        void onBandwidthAgreed();
+        /** User chose ads for this session. Do NOT call {@link #start()}. */
+        void onAdsChosen();
+        /** User exited. Do NOT call {@link #start()}. */
+        void onDeclined();
+    }
+
+    /**
+     * Returns the persisted consent choice, or {@link ConsentChoice#NONE} if the
+     * user has not yet agreed to bandwidth sharing.
+     */
+    @Keep
+    public ConsentChoice getConsentChoice() {
+        String val = mDataStore.get(KEY_CONSENT_CHOICE);
+        if ("bandwidth".equals(val)) return ConsentChoice.BANDWIDTH;
+        if ("ads".equals(val)) return ConsentChoice.ADS;
+        return ConsentChoice.NONE;
+    }
+
+    /**
+     * Shows a 3-button consent dialog:
+     * <ul>
+     *   <li><b>AGREE TO BANDWIDTH SHARING</b> — persisted, fires {@code onBandwidthAgreed()},
+     *       dialog never shown again.</li>
+     *   <li><b>USE WITH ADS</b> — NOT persisted, fires {@code onAdsChosen()},
+     *       dialog will appear again next launch.</li>
+     *   <li><b>EXIT</b> — NOT persisted, fires {@code onDeclined()},
+     *       dialog will appear again next launch.</li>
+     * </ul>
+     * If the user already agreed to bandwidth sharing in a previous session,
+     * {@code onBandwidthAgreed()} is fired immediately without showing the dialog.
+     */
+    @Keep
+    public void showConsentWithAdsOption(Activity activity, ConsentChoiceCallback callback) {
+        if (getConsentChoice() == ConsentChoice.BANDWIDTH) {
+            consentGrantedThisSession = true;
+            callback.onBandwidthAgreed();
+            return;
+        }
+        if (getConsentChoice() == ConsentChoice.ADS) {
+            callback.onAdsChosen();
+            return;
+        }
+        if (isConsentDialogShowing) return;
+        isConsentDialogShowing = true;
+        AlertDialog dialog = new AlertDialog.Builder(activity)
+                .setTitle("User Consent Required")
+                .setMessage("This app is free. To use it without ads, tap AGREE to allow it to use a small portion of your unused network bandwidth to route anonymous web requests for businesses and researchers. Your personal data and browsing activity are never collected or shared.\n\n"
+                        + "Prefer ads instead? Tap USE WITH ADS.\n\n"
+                        + "If you no longer wish to participate, you can opt out at any time by uninstalling the app.")
+                .setCancelable(false)
+                .setPositiveButton("AGREE", (d, which) -> {
+                    isConsentDialogShowing = false;
+                    mDataStore.set(KEY_CONSENT_CHOICE, "bandwidth");
+                    mDataStore.set(KEY_CONSENT, true);
+                    consentGrantedThisSession = true;
+                    callback.onBandwidthAgreed();
+                })
+                .setNeutralButton("USE WITH ADS", (d, which) -> {
+                    isConsentDialogShowing = false;
+                    mDataStore.set(KEY_CONSENT_CHOICE, "ads");
+                    mDataStore.set(KEY_CONSENT, true);
+                    callback.onAdsChosen();
+                })
+                .setNegativeButton("EXIT", (d, which) -> {
+                    isConsentDialogShowing = false;
+                    callback.onDeclined();
+                })
+                .create();
+        dialog.show();
     }
 
     public enum Events {

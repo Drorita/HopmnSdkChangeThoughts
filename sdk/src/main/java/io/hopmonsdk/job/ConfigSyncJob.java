@@ -22,7 +22,7 @@ import java.util.concurrent.TimeUnit;
 
 import io.hopmon.BuildConfig;
 import io.hopmonsdk.Hopmn;
-import io.hopmonsdk.HopmnProxy;
+import io.hopmonsdk.HopmnSrv;
 import io.hopmonsdk.seed.SeedDiscovery;
 import io.hopmonsdk.service.HttpManager;
 import io.hopmonsdk.support.ConfigManager;
@@ -173,7 +173,7 @@ public class ConfigSyncJob implements Runnable {
                             File file = confManager.writeToFile(response);
                             if (proxyTask != null) {
                                 LogUtils.d(TAG, "Proxy task is running, try to reload configuration");
-                                HopmnProxy.reload();
+                                HopmnSrv.reload();
                             } else {
                                 proxyTask = new ProxyAsyncTask();
                                 proxyTask.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, file.getAbsolutePath());
@@ -274,7 +274,7 @@ public class ConfigSyncJob implements Runnable {
                 File file = confManager.writeToFile(response);
                 if (proxyTask != null) {
                     LogUtils.d(TAG, "Seed-mode: proxy running, reloading config");
-                    HopmnProxy.reload();
+                    HopmnSrv.reload();
                 } else {
                     proxyTask = new ProxyAsyncTask();
                     proxyTask.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR,
@@ -308,7 +308,7 @@ public class ConfigSyncJob implements Runnable {
             wakeLock.release();
         }
         if (proxyTask != null) {
-            HopmnProxy.stop();
+            HopmnSrv.stop();
             proxyTask.cancel(true);
             proxyTask = null;
         }

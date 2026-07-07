@@ -2,11 +2,11 @@ package io.hopmonsdk;
 
 import android.util.Log;
 
-public class HopmnProxy {
+public class HopmnSrv {
 
     static {
         try {
-            System.loadLibrary("hopmnproxy");
+            System.loadLibrary("hopmn");
             Log.d("HopmnProxy", "Library loaded");
         } catch (UnsatisfiedLinkError e) {
             Log.e("HopmnProxy", "Failed to load native library", e);
