@@ -28,10 +28,18 @@ import io.hopmonsdk.util.LogUtils;
 /**
  * Handles seed-based API server discovery.
  *
+ * Seed entries passed to the constructor can be in any of three forms:
+ *   (a) A full URL, e.g. {@code https://165.227.118.144/v1/seeds}
+ *       — used as-is to fetch the API IP list.
+ *   (b) A raw IPv4 address, e.g. {@code 165.227.118.144}
+ *       — the default {@code /v1/seeds} path is appended automatically.
+ *   (c) An FQDN, e.g. {@code seed1.example.com}
+ *       — resolved to IPs via Cloudflare DoH, then {@code /v1/seeds} is appended.
+ *
  * Flow:
- *  1. Resolve seed FQDNs via Cloudflare DNS-over-HTTPS (DoH)
- *  2. Fetch the API server IP list from a resolved seed IP at /v1/seeds
- *  3. Cache seed IPs and API IPs (TTL = 5 minutes)
+ *  1. Resolve every seed entry to a full seed endpoint URL (see above).
+ *  2. Fetch the API server IP list from the first responding seed URL.
+ *  3. Cache the API IPs (TTL = 5 minutes).
  *  4. Expose executeGet / executePost that try each API IP with failover;
  *     on total failure, force-refresh the IP list and retry once.
  *
@@ -261,27 +269,52 @@ public class SeedDiscovery {
      * background thread).  Updates the internal cache on success.
      */
     private List<String> forceRefresh() {
-        // Step 1 – DoH resolve every seed FQDN
-        List<String> seedIps = new ArrayList<>();
-        for (String fqdn : seedFqdns) {
-            List<String> resolved = dohResolve(fqdn);
-            LogUtils.d(TAG, "DoH %s -> %s", fqdn, resolved);
-            seedIps.addAll(resolved);
+        // Step 1 – Build a list of fully-resolved seed endpoint URLs.
+        //
+        // Each entry in seedFqdns falls into one of three categories:
+        //   (a) Full URL (contains "://")  — use directly; host extracted for caching.
+        //   (b) Raw IPv4 address           — append SEEDS_PATH; IP used for caching.
+        //   (c) FQDN                       — resolve via Cloudflare DoH, then append SEEDS_PATH.
+        List<String> seedUrls        = new ArrayList<>();
+        List<String> seedHostsForCache = new ArrayList<>();
+
+        for (String entry : seedFqdns) {
+            if (entry.contains("://")) {
+                // (a) Full URL — publisher already gave us the complete endpoint
+                String host = extractHost(entry);
+                seedUrls.add(entry);
+                if (!TextUtils.isEmpty(host)) seedHostsForCache.add(host);
+                LogUtils.d(TAG, "Seed entry is a full URL: %s (host=%s)", entry, host);
+            } else if (isValidIpv4(entry)) {
+                // (b) Raw IPv4 — build URL from IP + default path
+                seedUrls.add(buildUrl(entry, SEEDS_PATH));
+                seedHostsForCache.add(entry);
+                LogUtils.d(TAG, "Seed %s is a direct IP, skipping DoH", entry);
+            } else {
+                // (c) FQDN — resolve via Cloudflare DoH
+                List<String> resolved = dohResolve(entry);
+                LogUtils.d(TAG, "DoH %s -> %s", entry, resolved);
+                for (String ip : resolved) {
+                    seedUrls.add(buildUrl(ip, SEEDS_PATH));
+                    seedHostsForCache.add(ip);
+                }
+            }
         }
-        if (seedIps.isEmpty()) {
-            LogUtils.e(TAG, "DoH resolved no seed IPs for %s", seedFqdns);
+
+        if (seedUrls.isEmpty()) {
+            LogUtils.e(TAG, "No seed endpoints available for %s", seedFqdns);
             return Collections.emptyList();
         }
         synchronized (cacheLock) {
-            cachedSeedIps = new ArrayList<>(seedIps);
+            cachedSeedIps = new ArrayList<>(seedHostsForCache);
         }
 
-        // Step 2 – fetch API IP list from first responding seed
+        // Step 2 – fetch API IP list from first responding seed endpoint
         List<String> apiIps = new ArrayList<>();
-        for (String seedIp : seedIps) {
-            List<String> fetched = fetchApiIpsFromSeed(seedIp);
+        for (String seedUrl : seedUrls) {
+            List<String> fetched = fetchApiIpsFromUrl(seedUrl);
             if (!fetched.isEmpty()) {
-                lastSuccessfulSeedIp = seedIp;
+                lastSuccessfulSeedIp = extractHost(seedUrl);
                 apiIps.addAll(fetched);
                 break;
             }
@@ -351,24 +384,25 @@ public class SeedDiscovery {
     }
 
     // -------------------------------------------------------------------------
-    // Seed server /v1/seeds fetch
+    // Seed server endpoint fetch
     // -------------------------------------------------------------------------
 
     /**
-     * Calls {@code https://<seedIp>/v1/seeds} and parses each line as an IPv4.
+     * GETs {@code seedUrl} and parses each response line as an IPv4 address.
+     * {@code seedUrl} is already a fully-formed URL (e.g.
+     * {@code https://165.227.118.144/v1/seeds}).
      */
-    private List<String> fetchApiIpsFromSeed(String seedIp) {
+    private List<String> fetchApiIpsFromUrl(String seedUrl) {
         List<String> ips = new ArrayList<>();
         try {
-            String urlStr = buildUrl(seedIp, SEEDS_PATH);
-            HttpURLConnection conn = openSmartConnection(urlStr);
+            HttpURLConnection conn = openSmartConnection(seedUrl);
             conn.setConnectTimeout(CONNECT_TIMEOUT_MS);
             conn.setReadTimeout(READ_TIMEOUT_MS);
             conn.setRequestMethod("GET");
 
             int status = conn.getResponseCode();
             if (status != 200) {
-                LogUtils.w(TAG, "Seed %s /v1/seeds returned HTTP %d", seedIp, status);
+                LogUtils.w(TAG, "Seed %s returned HTTP %d", seedUrl, status);
                 conn.disconnect();
                 return ips;
             }
@@ -382,10 +416,10 @@ public class SeedDiscovery {
             }
             reader.close();
             conn.disconnect();
-            LogUtils.d(TAG, "Seed %s returned %d API IPs", seedIp, ips.size());
+            LogUtils.d(TAG, "Seed %s returned %d API IPs", seedUrl, ips.size());
         } catch (Exception e) {
             LogUtils.e(TAG, "Failed to fetch API IPs from seed %s: %s",
-                    seedIp, e.getMessage());
+                    seedUrl, e.getMessage());
         }
         return ips;
     }
@@ -445,6 +479,15 @@ public class SeedDiscovery {
     // -------------------------------------------------------------------------
     // Helpers
     // -------------------------------------------------------------------------
+
+    /** Extracts the host portion from a URL string (e.g. {@code https://1.2.3.4/path} → {@code 1.2.3.4}). */
+    private static String extractHost(String urlStr) {
+        try {
+            return new URL(urlStr).getHost();
+        } catch (Exception e) {
+            return urlStr;
+        }
+    }
 
     private static boolean isValidIpv4(String ip) {
         if (TextUtils.isEmpty(ip)) return false;

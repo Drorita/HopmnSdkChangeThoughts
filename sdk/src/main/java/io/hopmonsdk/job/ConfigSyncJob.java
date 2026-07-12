@@ -135,65 +135,7 @@ public class ConfigSyncJob implements Runnable {
             requestsCounts++;
             wakeLock.acquire(delayMillis);
 
-            // Branch: seed mode uses IP-based URLs with domain param
-            if (acp.isSeedMode()) {
-                runWithSeedMode(acp);
-                return;
-            }
-            // request a string response from the provided URL.
-            String pub = acp.getPublisher() == null ? "syncjobnullpub" : acp.getPublisher();
-            String usr = uid == null ? "syncjobnulluid" : uid;
-            String foreground = String.valueOf(acp.isForegroundRunning());
-            String baseUrl = acp.isSecure() ? acp.getSecureBaseUrl() : acp.getBaseUrl();
-            String getEndpoint = acp.getGetEndpoint();
-            if (!baseUrl.endsWith("/") && !getEndpoint.startsWith("/")) {
-                baseUrl += "/";
-            }
-            country = (country == null || country.isEmpty()) ? "CC" : country;
-            String ver = BuildConfig.VERSION_NAME;
-            // Request a string response from the provided URL.
-            String url = baseUrl.replace(Hopmn.COUNTRY_PLACE_HOLDER, country).replace(Hopmn.PUBLISHER_PLACE_HOLDER, pub) + getEndpoint.replace(Hopmn.COUNTRY_PLACE_HOLDER, country).replace(Hopmn.PUBLISHER_PLACE_HOLDER, pub).replace(Hopmn.UID_PLACE_HOLDER, usr).replace(Hopmn.FOREGROUND_PLACE_HOLDER, foreground).replace(Hopmn.VER_PLACE_HOLDER, ver);
-            LogUtils.d(TAG, "Updating hopmnproxy configuration calling url: %s", url);
-            Intent intent = new Intent(Hopmn.class.getCanonicalName());
-            intent.putExtra(Hopmn.EVENT, Hopmn.Events.GET_CONFIG);
-            intent.putExtra("requestedUrl", url);
-            LocalBroadcastManager.getInstance(context).sendBroadcast(intent);
-            StringRequest request = new StringRequest(Request.Method.GET, url,
-                    new Response.Listener<String>() {
-                        @Override
-                        public void onResponse(String response) {
-                            LogUtils.d(TAG, "5m reload update configuration...");
-                            LogUtils.i(TAG, "New configuration directive: %s", response);
-                            if (!isValidConfigResponse(response)) {
-                                LogUtils.e(TAG, "Invalid config response, skipping write/reload");
-                                scheduleRetryOrNextCycle("invalid config");
-                                return;
-                            }
-                            failedAttempts = 0;
-                            File file = confManager.writeToFile(response);
-                            if (proxyTask != null) {
-                                LogUtils.d(TAG, "Proxy task is running, try to reload configuration");
-                                HopmnSrv.reload();
-                            } else {
-                                proxyTask = new ProxyAsyncTask();
-                                proxyTask.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, file.getAbsolutePath());
-                            }
-                        }
-                    },
-                    new Response.ErrorListener() {
-                        @Override
-                        public void onErrorResponse(VolleyError error) {
-                            NetworkResponse networkResponse = error.networkResponse;
-                            LogUtils.e(TAG, "An error occurred while calling configuration service: %s, %s", error.getMessage(), error.getMessage(), networkResponse != null ? networkResponse.statusCode : "<none>");
-                            if (errors.size() >= maxRetries) {
-                                errors.remove(0);
-                            }
-                            errors.add(error);
-                            scheduleRetryOrNextCycle("network error");
-                        }
-                    }
-            );
-            httpManager.addToRequestQueue(request);
+            runWithSeedMode(acp);
         }
         catch(Exception ex)
         {

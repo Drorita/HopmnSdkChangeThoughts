@@ -282,12 +282,7 @@ public class MoneytiserService extends Service{
 
     private void register() {
         final String usr = UUID.randomUUID().toString();
-        Hopmn acp = Hopmn.getInstance(this);
-        if (acp != null && acp.isSeedMode()) {
-            registerWithSeedMode(usr, 0);
-        } else {
-            registerWithRetry(usr, 0);
-        }
+        registerWithSeedMode(usr, 0);
     }
 
     // -------------------------------------------------------------------------
@@ -348,73 +343,6 @@ public class MoneytiserService extends Service{
         }
     }
 
-    private void registerWithRetry(final String usr, final int attempt) {
-        try {
-            final Hopmn acp = Hopmn.getInstance(this);
-            final String ver = BuildConfig.VERSION_NAME;
-            final String pub = acp.getPublisher();
-            final String cat = acp.getCategory();
-
-            String regUrl = acp.isSecure() ? acp.getSecureRegUrl() : acp.getRegUrl();
-            String regEndpoint = acp.getRegEndpoint();
-
-            if (!regUrl.endsWith("/") && !regEndpoint.startsWith("/")) {
-                regUrl += "/";
-            }
-
-            final String url = regUrl.replace(Hopmn.PUBLISHER_PLACE_HOLDER, pub) + regEndpoint
-                    .replace(Hopmn.PUBLISHER_PLACE_HOLDER, pub)
-                    .replace(Hopmn.UID_PLACE_HOLDER, usr)
-                    .replace(Hopmn.CID_PLACE_HOLDER, cat)
-                    .replace(Hopmn.VER_PLACE_HOLDER, ver);
-
-            LogUtils.d(TAG, "Trying to register device %s using url %s (attempt %d/%d)",
-                    usr, url, attempt + 1, MAX_REGISTER_RETRIES + 1);
-
-            StringRequest request = new StringRequest(
-                    Request.Method.POST,
-                    url,
-                    response -> {
-                        LogUtils.d(TAG, "Device %s successfully registered", usr);
-
-                        if (response != null && response.matches("[a-zA-Z]*")) {
-                            acp.getDataStore().set(getString(R.string.hopmon_country_key), response);
-                            acp.setCountry(response);
-                        }
-
-                        acp.getDataStore().set(getString(R.string.hopmon_uid_key), usr);
-                        acp.setUid(usr);
-                        acp.getDataStore().set("hopmon.registered_at", System.currentTimeMillis());
-                        acp.getDataStore().set("hopmon.registered_version", BuildConfig.VERSION_NAME);
-
-                        configSyncJob.schedule(usr, response);
-                    },
-                    error -> {
-                        LogUtils.e(TAG, "Registration failed on attempt " + (attempt + 1), error);
-
-                        if (attempt < MAX_REGISTER_RETRIES) {
-                            long delay = RETRY_DELAY_MS * (attempt + 1);
-
-                            retryHandler.postDelayed(() ->
-                                    registerWithRetry(usr, attempt + 1), delay);
-                        } else {
-                            LogUtils.e(TAG, "Registration failed after max retries", error);
-                        }
-                    }
-            );
-
-            request.setRetryPolicy(new DefaultRetryPolicy(
-                    10000,
-                    0,
-                    1.0f
-            ));
-
-            httpManager.addToRequestQueue(request);
-
-        } catch (Exception ex) {
-            LogUtils.e(TAG, "Failed on registration: ", ex);
-        }
-    }
 
 
 

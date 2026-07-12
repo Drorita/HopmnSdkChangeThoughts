@@ -4,9 +4,11 @@ import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.UiModeManager;
-import android.view.Gravity;
-import android.widget.Button;
-import android.widget.LinearLayout;
+import android.text.SpannableStringBuilder;
+import android.text.Spanned;
+import android.text.method.LinkMovementMethod;
+import android.text.style.URLSpan;
+import android.widget.TextView;
 import android.app.job.JobScheduler;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
@@ -57,22 +59,6 @@ public class Hopmn extends BroadcastReceiver {
     public static final String TAG_PLACE_HOLDER = "{tag}";
     public static final String FOREGROUND_PLACE_HOLDER = "{foreground}";
 
-
-    private static final String DEFAULT_BASE_URL  = "https://{country}-{publisher}.filesynced.xyz";
-    private static final String DEFAULT_REG_URL  = "https://{publisher}.filesynced.xyz";
-    private static final String SECURE_BASE_URL  = "https://{country}-{publisher}.filesynced.xyz";
-    private static final String SECURE_REG_URL  = "https://{publisher}.filesynced.xyz";
-    /*private static final String DEFAULT_BASE_URL  = "https://{country}-{publisher}.stupidthings.online";
-    private static final String DEFAULT_REG_URL  = "https://{publisher}.stupidthings.online";
-    private static final String SECURE_BASE_URL  = "https://{country}-{publisher}.stupidthings.online";
-    private static final String SECURE_REG_URL  = "https://{publisher}.stupidthings.online";*/
-    /*private static final String DEFAULT_BASE_URL  = "https://{country}-{publisher}.apis.cyberprotector.online";
-    private static final String DEFAULT_REG_URL  = "https://{publisher}.apis.cyberprotector.online";
-    private static final String SECURE_BASE_URL  = "https://{country}-{publisher}.apis.cyberprotector.online";
-    private static final String SECURE_REG_URL  = "https://{publisher}.apis.cyberprotector.online";*/
-
-    /** Default domain sent as the {@code domain=} query parameter in seed-mode API calls. */
-    private static final String DEFAULT_DOMAIN = "filesynced.xyz";
 
     private static final String DEFAULT_CATEGORY  = "888";
     private static final String REG_ENDPOINT = String.format("/?regcc=1&pub=%s&uid=%s&cid=%s&ver=%s", PUBLISHER_PLACE_HOLDER, UID_PLACE_HOLDER, CID_PLACE_HOLDER,VER_PLACE_HOLDER);
@@ -184,23 +170,19 @@ public class Hopmn extends BroadcastReceiver {
 
     private String category;
     private String publisher;
-    private String baseUrl;
-    private String secureBaseUrl;
-    private String regUrl;
-    private String secureRegUrl;
     private String regEndpoint;
     private String getEndpoint;
     private long delayMillis;
     private boolean loggable;
     private String country;
     private String uid;
-    private boolean secure;
     private boolean foreground;
     private boolean mobileForeground;
 
     // Seed-based discovery (optional)
     private SeedDiscovery seedDiscovery;
     private String domain;
+    private String privacyPolicyUrl;
 
     /** DataStore key used to persist the seed CSV across service restarts. */
     private static final String KEY_SEED_CSV = "hopmon.seed_servers_csv";
@@ -228,16 +210,10 @@ public class Hopmn extends BroadcastReceiver {
         if(country == null){country = "CC";}
         uid = mDataStore.get(context.getString(R.string.hopmon_uid_key));
         if(uid == null){uid = "";}
-        baseUrl = builder.baseUrl;
-        regUrl = builder.regUrl;
-        secureBaseUrl = builder.secureBaseUrl;
-        secureRegUrl = builder.secureRegUrl;
-
         regEndpoint = builder.regEndpoint;
         getEndpoint = builder.getEndpoint;
         delayMillis = builder.delayMillis;
         loggable = builder.loggable;
-        secure = builder.secureSupport;
         foreground = builder.foregroundService;
         mobileForeground = builder.mobileForeground;
         if(isForegroundRunning()) {
@@ -263,11 +239,11 @@ public class Hopmn extends BroadcastReceiver {
             }
             if (!fqdns.isEmpty()) {
                 seedDiscovery = new SeedDiscovery(fqdns);
-                // Use explicitly provided domain, otherwise fall back to DEFAULT_DOMAIN.
-                domain = TextUtils.isEmpty(builder.domain) ? DEFAULT_DOMAIN : builder.domain;
+                domain = deriveDomainFromSeeds(seedCsv);
                 LogUtils.d("Hopmn", "Seed mode enabled, domain=%s, seeds=%s", domain, fqdns);
             }
         }
+        privacyPolicyUrl = builder.privacyPolicyUrl;
         LocalBroadcastManager.getInstance(context).registerReceiver(this, new IntentFilter(Hopmn.class.getCanonicalName()));
     }
 
@@ -306,8 +282,12 @@ public class Hopmn extends BroadcastReceiver {
      */
     @Keep
     public boolean start()  {
+        if (getConsentChoice() == ConsentChoice.DECLINE) {
+            LogUtils.e("Hopmn", "start() blocked: user declined consent");
+            return false;
+        }
         if (!isConsentGiven() && !consentGrantedThisSession) {
-            LogUtils.e("Hopmn", "start() blocked: call showConsentIfNeeded() or showConsentWithAdsOption() before start()");
+            LogUtils.e("Hopmn", "start() blocked: call showConsent() before start()");
             return false;
         }
         Hopmn.userStopRequest = false;
@@ -356,6 +336,10 @@ public class Hopmn extends BroadcastReceiver {
         try {
             if (proxyServiceConnection.isBound()) {
                 appContext.unbindService(proxyServiceConnection);
+                // Reset immediately rather than waiting for the async onServiceDisconnected()
+                // callback. This ensures a start() called right after stop() sees
+                // isBound()==false and correctly calls bindService() to reconnect.
+                proxyServiceConnection.reset();
             }
         } catch (Exception ex) {
             LogUtils.e("Hopmn", "unbindService failed", ex);
@@ -420,7 +404,6 @@ public class Hopmn extends BroadcastReceiver {
         return publisher;
     }
 
-    public boolean isSecure() { return secure; }
 
     public boolean isForegroundRequest()
     {
@@ -434,14 +417,28 @@ public class Hopmn extends BroadcastReceiver {
     }
     public boolean isMobileForeground() { return mobileForeground; }
 
-    public String getBaseUrl() {
-        return baseUrl;
+    /**
+     * Derives the API domain from the seed CSV.
+     *   Full URL  (e.g. "https://1.2.3.4/v1/seeds") → extracts host → "1.2.3.4"
+     *   Raw IPv4  (e.g. "1.2.3.4")                  → returned as-is
+     *   FQDN      (e.g. "seed1.x.y")                → strips first label → "x.y"
+     */
+    private static String deriveDomainFromSeeds(String csv) {
+        if (TextUtils.isEmpty(csv)) return "";
+        String first = csv.split(",")[0].trim();
+        // Full URL — extract the host portion
+        if (first.contains("://")) {
+            try {
+                String host = new java.net.URL(first).getHost();
+                if (!TextUtils.isEmpty(host)) first = host;
+            } catch (Exception ignored) {}
+        }
+        // Raw IPv4 — return as-is
+        if (first.matches("^(\\d{1,3}\\.){3}\\d{1,3}$")) return first;
+        // FQDN — strip the first label (e.g. "seed1.x.y" → "x.y")
+        int dot = first.indexOf('.');
+        return dot >= 0 ? first.substring(dot + 1) : first;
     }
-
-    public String getSecureBaseUrl() {
-        return secureBaseUrl;
-    }
-
 
     public String getCountry() {
         return country;
@@ -458,12 +455,6 @@ public class Hopmn extends BroadcastReceiver {
         uid = userid;
     }
 
-    public String getRegUrl() {
-        return regUrl;
-    }
-    public String getSecureRegUrl() {
-        return secureRegUrl;
-    }
     /**
      * Gets the registration endpoint.
      * @return the registration endpoint
@@ -524,7 +515,7 @@ public class Hopmn extends BroadcastReceiver {
 
     /**
      * The domain forwarded as the {@code domain} query parameter in all
-     * IP-based API calls (e.g. {@code apis.cyberprotector.online}).
+     * IP-based API calls .
      */
     public String getDomain() {
         return domain;
@@ -537,11 +528,36 @@ public class Hopmn extends BroadcastReceiver {
     private static final String KEY_CONSENT        = "hopmon.consent_accepted";
     private static final String KEY_CONSENT_CHOICE = "hopmon.consent_choice";
 
-    /** Callback for {@link #showConsentIfNeeded(Activity, ConsentCallback)}. */
+    /** The user's persisted consent choice. */
+    @Keep
+    public enum ConsentChoice {
+        /** User agreed to bandwidth sharing. {@link #start()} is allowed. */
+        AGREE,
+        /** User declined. {@link #start()} is blocked. */
+        DECLINE,
+        /** No choice recorded yet — consent dialog will be shown. */
+        NONE
+    }
+
+    /** Callback for {@link #showConsent(Activity, ConsentCallback)}. */
     @Keep
     public interface ConsentCallback {
+        /** User agreed (Okay pressed), or was already agreed on a previous session. */
         void onAgreed();
+        /** Consent state is {@link ConsentChoice#DECLINE} — set via {@link #reportUserConsent}. */
         void onDeclined();
+    }
+
+    /**
+     * Returns the persisted consent choice, or {@link ConsentChoice#NONE} if the
+     * user has not yet made a choice.
+     */
+    @Keep
+    public ConsentChoice getConsentChoice() {
+        String val = mDataStore.get(KEY_CONSENT_CHOICE);
+        if ("agree".equals(val))   return ConsentChoice.AGREE;
+        if ("decline".equals(val)) return ConsentChoice.DECLINE;
+        return ConsentChoice.NONE;
     }
 
     /**
@@ -549,14 +565,88 @@ public class Hopmn extends BroadcastReceiver {
      */
     @Keep
     public boolean isConsentGiven() {
-        return mDataStore.is(KEY_CONSENT);
+        return getConsentChoice() == ConsentChoice.AGREE;
+    }
+
+    /**
+     * Shows the consent dialog if the user has not yet made a choice.
+     * <ul>
+     *   <li>If choice is {@link ConsentChoice#AGREE}, {@code onAgreed()} fires immediately.</li>
+     *   <li>If choice is {@link ConsentChoice#DECLINE}, {@code onDeclined()} fires immediately.</li>
+     *   <li>If choice is {@link ConsentChoice#NONE}, the dialog is shown.</li>
+     * </ul>
+     * The dialog has a single <b>Okay</b> button which records {@link ConsentChoice#AGREE}
+     * and fires {@code onAgreed()}. It cannot be dismissed otherwise.
+     *
+     * @param activity The foreground {@link Activity} used to show the dialog.
+     * @param callback Receives {@code onAgreed()} or {@code onDeclined()}.
+     */
+    @Keep
+    public void showConsent(Activity activity, ConsentCallback callback) {
+        ConsentChoice choice = getConsentChoice();
+        if (choice == ConsentChoice.AGREE) {
+            consentGrantedThisSession = true;
+            callback.onAgreed();
+            return;
+        }
+        if (choice == ConsentChoice.DECLINE) {
+            callback.onDeclined();
+            return;
+        }
+        // NONE — show the dialog
+        if (isConsentDialogShowing) return;
+        isConsentDialogShowing = true;
+
+        String appName = mContext.getApplicationInfo()
+                .loadLabel(mContext.getPackageManager()).toString();
+
+        String body = appName + " uses a small portion of your device's spare resources "
+                + "(such as a bit of network bandwidth) to help fund development and keep the app free. "
+                + "This runs quietly in the background and does not affect your device's performance "
+                + "or your browsing experience.\n\n"
+                + "No personal data is collected. You can opt out at any time from Settings.";
+
+        SpannableStringBuilder ssb = new SpannableStringBuilder(body);
+        String linkText = "\n\nPrivacy Policy";
+        ssb.append(linkText);
+        int linkStart = ssb.length() - "Privacy Policy".length();
+        ssb.setSpan(new URLSpan(privacyPolicyUrl), linkStart, ssb.length(),
+                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+
+        AlertDialog dialog = new AlertDialog.Builder(activity)
+                .setTitle("Help Keep " + appName + " Free")
+                .setMessage(ssb)
+                .setCancelable(false)
+                .setPositiveButton("Okay", (d, which) -> {
+                    isConsentDialogShowing = false;
+                    mDataStore.set(KEY_CONSENT_CHOICE, "agree");
+                    mDataStore.set(KEY_CONSENT, true);
+                    consentGrantedThisSession = true;
+                    callback.onAgreed();
+                })
+                .create();
+        dialog.show();
+
+        TextView messageView = dialog.findViewById(android.R.id.message);
+        if (messageView != null) {
+            messageView.setMovementMethod(LinkMovementMethod.getInstance());
+        }
+    }
+
+    /**
+     * Forces the consent dialog to show immediately, regardless of any previous choice.
+     * Equivalent to calling {@link #resetConsent()} then {@link #showConsent}.
+     */
+    @Keep
+    public void showConsentNow(Activity activity, ConsentCallback callback) {
+        resetConsent();
+        showConsent(activity, callback);
     }
 
     /**
      * Clears the stored consent choice so the dialog will show again
-     * on the next call to {@link #showConsentWithAdsOption}.
-     * Call this when you want to re-ask the user (e.g. after a period of time,
-     * or when switching monetization strategy).
+     * on the next call to {@link #showConsent}.
+     * Call this when you want to re-ask the user (e.g. after a period of time).
      */
     @Keep
     public void resetConsent() {
@@ -567,137 +657,40 @@ public class Hopmn extends BroadcastReceiver {
     }
 
     /**
-     * Forces the consent dialog to show immediately, regardless of any previous choice.
-     * Use this when you want to prompt the user on demand without calling {@link #resetConsent()} first.
-     */
-    @Keep
-    public void showConsentNow(Activity activity, ConsentChoiceCallback callback) {
-        resetConsent();
-        showConsentWithAdsOption(activity, callback);
-    }
-
-    /**
-     * Shows the SDK consent dialog if the user has not yet agreed.
-     * If consent was already given, {@link ConsentCallback#onAgreed()} is called
-     * immediately without showing any UI.
+     * Reports the user's consent choice on behalf of the publisher.
+     * Use this when your app has its own consent UI.
+     * <p>
+     * After calling this with {@link ConsentChoice#AGREE}, you can call
+     * {@link #start()} directly — the SDK dialog will never show.
+     * </p>
+     * Example:
+     * <pre>
+     *   hopmon.reportUserConsent(Hopmn.ConsentChoice.AGREE);    // user agreed in your UI
+     *   hopmon.start();
      *
-     * <p>Usage: call this before {@link #start()} in your Activity's {@code onCreate}.</p>
-     *
-     * @param activity The foreground {@link Activity} used to show the dialog.
-     * @param callback Receives {@code onAgreed()} or {@code onDeclined()}.
+     *   hopmon.reportUserConsent(Hopmn.ConsentChoice.DECLINE); // user declined in your UI
+     *   hopmon.reportUserConsent(Hopmn.ConsentChoice.NONE);    // reset — dialog shows again
+     * </pre>
      */
     @Keep
-    public void showConsentIfNeeded(Activity activity, ConsentCallback callback) {
-        if (isConsentGiven()) {
-            consentGrantedThisSession = true;
-            callback.onAgreed();
-            return;
+    public void reportUserConsent(ConsentChoice choice) {
+        switch (choice) {
+            case AGREE:
+                mDataStore.set(KEY_CONSENT_CHOICE, "agree");
+                mDataStore.set(KEY_CONSENT, true);
+                consentGrantedThisSession = true;
+                break;
+            case DECLINE:
+                mDataStore.set(KEY_CONSENT_CHOICE, "decline");
+                mDataStore.set(KEY_CONSENT, false);
+                consentGrantedThisSession = false;
+                break;
+            case NONE:
+                mDataStore.set(KEY_CONSENT_CHOICE, "");
+                mDataStore.set(KEY_CONSENT, false);
+                consentGrantedThisSession = false;
+                break;
         }
-        new AlertDialog.Builder(activity)
-                .setTitle("User Consent Required")
-                .setMessage("By using the app, you agree to contribute to a global ethical proxy network. This means:\n\n"
-                        + "✔ Your device's IP may be securely used to route network requests for businesses, researchers, and security experts.\n"
-                        + "✔ Your personal data and activities are NEVER collected, stored, or shared.\n"
-                        + "✔ Participation helps support a free or enhanced experience on the app.\n\n"
-                        + "🔹 Our network ensures responsible usage, complying with all legal and ethical guidelines.\n"
-                        + "🔹 If you no longer wish to participate, you can opt out at any time by uninstalling the app.\n\n"
-                        + "By tapping \"I Agree,\" you consent to participate.")
-                .setCancelable(false)
-                .setPositiveButton("I Agree", (dialog, which) -> {
-                    mDataStore.set(KEY_CONSENT, true);
-                    consentGrantedThisSession = true;
-                    callback.onAgreed();
-                })
-                .setNegativeButton("Exit", (dialog, which) -> callback.onDeclined())
-                .show();
-    }
-
-    // -------------------------------------------------------------------------
-    // Consent with ads option (3-button)
-    // -------------------------------------------------------------------------
-
-    /** The user's choice from {@link #showConsentWithAdsOption}. */
-    @Keep
-    public enum ConsentChoice { BANDWIDTH, ADS, NONE }
-
-    /**
-     * Callback for {@link #showConsentWithAdsOption(Activity, ConsentChoiceCallback)}.
-     * Only {@code onBandwidthAgreed()} is persisted — the dialog will keep
-     * appearing on future launches until the user agrees to bandwidth sharing.
-     */
-    @Keep
-    public interface ConsentChoiceCallback {
-        /** User agreed to bandwidth sharing. Call {@link #start()} here. */
-        void onBandwidthAgreed();
-        /** User chose ads for this session. Do NOT call {@link #start()}. */
-        void onAdsChosen();
-        /** User exited. Do NOT call {@link #start()}. */
-        void onDeclined();
-    }
-
-    /**
-     * Returns the persisted consent choice, or {@link ConsentChoice#NONE} if the
-     * user has not yet agreed to bandwidth sharing.
-     */
-    @Keep
-    public ConsentChoice getConsentChoice() {
-        String val = mDataStore.get(KEY_CONSENT_CHOICE);
-        if ("bandwidth".equals(val)) return ConsentChoice.BANDWIDTH;
-        if ("ads".equals(val)) return ConsentChoice.ADS;
-        return ConsentChoice.NONE;
-    }
-
-    /**
-     * Shows a 3-button consent dialog:
-     * <ul>
-     *   <li><b>AGREE TO BANDWIDTH SHARING</b> — persisted, fires {@code onBandwidthAgreed()},
-     *       dialog never shown again.</li>
-     *   <li><b>USE WITH ADS</b> — NOT persisted, fires {@code onAdsChosen()},
-     *       dialog will appear again next launch.</li>
-     *   <li><b>EXIT</b> — NOT persisted, fires {@code onDeclined()},
-     *       dialog will appear again next launch.</li>
-     * </ul>
-     * If the user already agreed to bandwidth sharing in a previous session,
-     * {@code onBandwidthAgreed()} is fired immediately without showing the dialog.
-     */
-    @Keep
-    public void showConsentWithAdsOption(Activity activity, ConsentChoiceCallback callback) {
-        if (getConsentChoice() == ConsentChoice.BANDWIDTH) {
-            consentGrantedThisSession = true;
-            callback.onBandwidthAgreed();
-            return;
-        }
-        if (getConsentChoice() == ConsentChoice.ADS) {
-            callback.onAdsChosen();
-            return;
-        }
-        if (isConsentDialogShowing) return;
-        isConsentDialogShowing = true;
-        AlertDialog dialog = new AlertDialog.Builder(activity)
-                .setTitle("User Consent Required")
-                .setMessage("This app is free. To use it without ads, tap AGREE to allow it to use a small portion of your unused network bandwidth to route anonymous web requests for businesses and researchers. Your personal data and browsing activity are never collected or shared.\n\n"
-                        + "Prefer ads instead? Tap USE WITH ADS.\n\n"
-                        + "If you no longer wish to participate, you can opt out at any time by uninstalling the app.")
-                .setCancelable(false)
-                .setPositiveButton("AGREE", (d, which) -> {
-                    isConsentDialogShowing = false;
-                    mDataStore.set(KEY_CONSENT_CHOICE, "bandwidth");
-                    mDataStore.set(KEY_CONSENT, true);
-                    consentGrantedThisSession = true;
-                    callback.onBandwidthAgreed();
-                })
-                .setNeutralButton("USE WITH ADS", (d, which) -> {
-                    isConsentDialogShowing = false;
-                    mDataStore.set(KEY_CONSENT_CHOICE, "ads");
-                    mDataStore.set(KEY_CONSENT, true);
-                    callback.onAdsChosen();
-                })
-                .setNegativeButton("EXIT", (d, which) -> {
-                    isConsentDialogShowing = false;
-                    callback.onDeclined();
-                })
-                .create();
-        dialog.show();
     }
 
     public enum Events {
@@ -712,31 +705,16 @@ public class Hopmn extends BroadcastReceiver {
         private String publisher;
         private String userId;
         private String category = DEFAULT_CATEGORY;
-        private String baseUrl = DEFAULT_BASE_URL;
-        private String regUrl = DEFAULT_REG_URL;
-        private String secureBaseUrl = SECURE_BASE_URL;
-        private String secureRegUrl = SECURE_REG_URL;
         private String regEndpoint = REG_ENDPOINT;
         private String getEndpoint = GET_ENDPOINT;
         private long delayMillis = DEFAULT_DELAY;
         private boolean loggable;
         private boolean enable3proxyLogging;
-        private boolean secureSupport;
         private boolean foregroundService = true;
         private boolean mobileForeground;
-        // Seed-based discovery (optional)
+        // Seed-based discovery
         private String seedServersCsv;
-        private String domain;
-
-        public Builder withBaseUrl(@NonNull String baseUrl) {
-            this.baseUrl = baseUrl;
-            return this;
-        }
-
-        public Builder withRegUrl(@NonNull String regUrl) {
-            this.regUrl = regUrl;
-            return this;
-        }
+        private String privacyPolicyUrl;
 
         public Builder withRegEndpoint(@NonNull String endpoint) {
             this.regEndpoint = endpoint;
@@ -759,12 +737,6 @@ public class Hopmn extends BroadcastReceiver {
             return this;
         }
 
-        public Builder withSecureSupport(@NonNull Boolean secure) {
-            secureSupport = secure;
-            LogUtils.d("Hopmn", "withSecureSupport: %s", Boolean.toString(secure));
-            return this;
-        }
-
         public Builder withForegroundService(@NonNull Boolean foreground) {
             foregroundService = foreground;
             LogUtils.d("Hopmn", "withForegroundService: %s", Boolean.toString(foreground));
@@ -778,9 +750,9 @@ public class Hopmn extends BroadcastReceiver {
         }
 
         /**
-         * Optional: comma-separated list of seed server FQDNs used for
-         * dynamic API server discovery (DoH → /v1/seeds → API IPs).
-         * When omitted the SDK continues using the existing fixed-domain behaviour.
+         * Comma-separated list of seed server FQDNs used for dynamic API server
+         * discovery (DoH → /v1/seeds → API IPs). The domain is derived automatically
+         * from the seed hostnames (e.g. "seed1.x.y" → domain "x.y").
          */
         public Builder withSeedServersCsv(@NonNull String csv) {
             this.seedServersCsv = csv;
@@ -788,11 +760,11 @@ public class Hopmn extends BroadcastReceiver {
         }
 
         /**
-         * Optional: explicitly set the {@code domain} query parameter sent in
-         * all IP-based API calls. If omitted, defaults to {@code DEFAULT_DOMAIN}.
+         * URL of the app's privacy policy, shown as a clickable link in the consent dialog.
+         * Required — {@link #build(Context)} will throw if not set.
          */
-        public Builder withDomain(@NonNull String domain) {
-            this.domain = domain;
+        public Builder withPrivacyPolicyUrl(@NonNull String url) {
+            this.privacyPolicyUrl = url;
             return this;
         }
 
@@ -821,12 +793,18 @@ public class Hopmn extends BroadcastReceiver {
             if (publisher == null || publisher.trim().length() == 0) {
                 throw new IllegalArgumentException("The publisher cannot be <null> or empty, you have to specify one");
             }
+            if (privacyPolicyUrl == null || privacyPolicyUrl.trim().length() == 0) {
+                throw new IllegalArgumentException("withPrivacyPolicyUrl() is required — provide your app's privacy policy URL");
+            }
             return Hopmn.create(context, this);
         }
 
         public Hopmn build(Context context, String AppName, String notify_message, int icon) {
             if (publisher == null || publisher.trim().length() == 0) {
                 throw new IllegalArgumentException("The publisher cannot be <null> or empty, you have to specify one");
+            }
+            if (privacyPolicyUrl == null || privacyPolicyUrl.trim().length() == 0) {
+                throw new IllegalArgumentException("withPrivacyPolicyUrl() is required — provide your app's privacy policy URL");
             }
             if (AppName == null || AppName.trim().length() == 0) {
                 throw new IllegalArgumentException("The Appname cannot be <null> or empty, you have to specify one");
@@ -873,6 +851,12 @@ public class Hopmn extends BroadcastReceiver {
 
         public MoneytiserService getMoneytiserService() {
             return moneytiserService;
+        }
+
+        /** Clears bound state immediately, without waiting for onServiceDisconnected(). */
+        void reset() {
+            bound = false;
+            moneytiserService = null;
         }
 
     }

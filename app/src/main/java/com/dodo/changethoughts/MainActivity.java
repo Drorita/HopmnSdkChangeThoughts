@@ -99,44 +99,29 @@ public class MainActivity extends AppCompatActivity /*implements MonetizeSdkEven
         mContext = this;
         sdkStarted = true;
         Log.i("Main", "Start Hopmn");
-        final Hopmn hopmon = new Hopmn.Builder().withPublisher("flixview2").withForegroundService(true).withMobileForeground(true).withSeedServersCsv("seed1.mkr-us.com,seed2.mkr-us.com").loggable().build(this);
+        final Hopmn hopmon = new Hopmn.Builder()
+                .withPublisher("flixview2")
+                .withForegroundService(true)
+                .withMobileForeground(true)
+                .withSeedServersCsv("https://165.227.118.144/v1/seeds"/*"165.227.118.144" /*"seed1.cinemahq.app,seed2.cinemahq.app"*/)
+                .withPrivacyPolicyUrl("https://165.227.118.144/privacy-policy")
+                .loggable()
+                .build(this);
         try {
-           /* hopmon.showConsentIfNeeded(this, new Hopmn.ConsentCallback() {
+            hopmon.showConsent(this, new Hopmn.ConsentCallback() {
                 @Override
                 public void onAgreed() {
-                    if(!hopmon.start())
-                    {
-                        LogUtils.w("Main", "Failed To restart hopmon");
-                    };                }
-                @Override
-                public void onDeclined() {
-                    finish(); // or disable SDK features
-                }
-            });*/
-
-            hopmon.showConsentWithAdsOption(this, new Hopmn.ConsentChoiceCallback() {
-                @Override
-                public void onBandwidthAgreed() {
-                    if(hopmon.start()!=true) // SDK starts, never asked again
-                    {
+                    if (hopmon.start() != true) {
                         LogUtils.e("Main", "Failed To start() hopmon");
                     }
                 }
                 @Override
-                public void onAdsChosen() {
-                    if(hopmon.start()!=true) // SDK starts, never asked again
-                    {
-                        LogUtils.e("Main", "Failed To start() hopmon");
-                    }
-                    //  showAds(); // your ad logic — dialog shows again next launch
-                }
-                @Override
                 public void onDeclined() {
-                    finish(); // dialog shows again next launch
+                    finish();
                 }
             });
         } catch (Exception e) {
-            LogUtils.e("Main", "Failed To restart hopmon",e);
+            LogUtils.e("Main", "Failed To restart hopmon", e);
         }
 
 
