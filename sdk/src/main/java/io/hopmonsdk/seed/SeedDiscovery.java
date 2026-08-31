@@ -53,6 +53,21 @@ public class SeedDiscovery {
             "https://cloudflare-dns.com/dns-query?name=%s&type=A";
     private static final String SEEDS_PATH = "/v1/seeds";
 
+    /**
+     * Postconsent fallback: domain-based endpoints that return the current API server IPs for a
+     * given publisher, one IP per line (same format as {@code /v1/seeds}). Used only when the seed
+     * servers fail to yield any API IPs. Reached via normal system DNS (no DoH), on infrastructure
+     * separate from the raw seed IP, so it survives the seed box being down / its IP changing.
+     */
+    private static final String[] POSTCONSENT_URLS = {
+            "https://pubs.abnetworks.io/postconsent",
+            "https://pubs.myrc.xyz/postconsent"
+    };
+
+    /** Master API key for the postconsent endpoint (works for any publisher). Rotate periodically. */
+    private static final String POSTCONSENT_KEY =
+            "9221346234fa4fb880caf324effcff004025a41a51d672a7";
+
     /** Default cache TTL for both seed IPs and API IPs (5 minutes). */
     private static final long CACHE_TTL_MS = 5 * 60 * 1000L;
 
@@ -73,6 +88,12 @@ public class SeedDiscovery {
     // -------------------------------------------------------------------------
 
     private final List<String> seedFqdns;
+
+    /**
+     * Publisher used for the postconsent fallback query ({@code ?pub=...}). When null/empty the
+     * fallback is disabled and only the seed servers are used.
+     */
+    private final String publisher;
 
     /**
      * Single-threaded executor so that concurrent callers (registration + config
@@ -108,7 +129,17 @@ public class SeedDiscovery {
     // -------------------------------------------------------------------------
 
     public SeedDiscovery(List<String> seedFqdns) {
+        this(seedFqdns, null);
+    }
+
+    /**
+     * @param seedFqdns Seed entries (full URL / raw IPv4 / FQDN).
+     * @param publisher Publisher for the postconsent fallback; when null/empty the fallback is
+     *                  disabled and only seed servers are used.
+     */
+    public SeedDiscovery(List<String> seedFqdns, String publisher) {
         this.seedFqdns = new ArrayList<>(seedFqdns);
+        this.publisher = publisher;
     }
 
     // -------------------------------------------------------------------------
@@ -205,7 +236,6 @@ public class SeedDiscovery {
             try {
                 String urlStr = buildUrl(ip, path);
                 LogUtils.d(TAG, "%s %s", isPost ? "POST" : "GET", urlStr);
-
                 HttpURLConnection conn = openSmartConnection(urlStr);
                 conn.setConnectTimeout(CONNECT_TIMEOUT_MS);
                 conn.setReadTimeout(READ_TIMEOUT_MS);
@@ -301,26 +331,47 @@ public class SeedDiscovery {
             }
         }
 
-        if (seedUrls.isEmpty()) {
-            LogUtils.e(TAG, "No seed endpoints available for %s", seedFqdns);
-            return Collections.emptyList();
-        }
-        synchronized (cacheLock) {
-            cachedSeedIps = new ArrayList<>(seedHostsForCache);
-        }
-
-        // Step 2 – fetch API IP list from first responding seed endpoint
+        // Step 2 – fetch API IP list from first responding seed endpoint.
         List<String> apiIps = new ArrayList<>();
-        for (String seedUrl : seedUrls) {
-            List<String> fetched = fetchApiIpsFromUrl(seedUrl);
-            if (!fetched.isEmpty()) {
-                lastSuccessfulSeedIp = extractHost(seedUrl);
-                apiIps.addAll(fetched);
-                break;
+        if (seedUrls.isEmpty()) {
+            // No seed endpoints resolved (e.g. all FQDN DoH lookups failed on an old device).
+            // Do NOT bail here — fall through to the postconsent fallback below, which is
+            // domain-based and depends on neither DoH nor the seed servers.
+            LogUtils.e(TAG, "No seed endpoints available for %s", seedFqdns);
+        } else {
+            synchronized (cacheLock) {
+                cachedSeedIps = new ArrayList<>(seedHostsForCache);
+            }
+            for (String seedUrl : seedUrls) {
+                List<String> fetched = fetchApiIpsFromUrl(seedUrl);
+                if (!fetched.isEmpty()) {
+                    lastSuccessfulSeedIp = extractHost(seedUrl);
+                    apiIps.addAll(fetched);
+                    break;
+                }
             }
         }
+
+        // Step 2b – postconsent fallback. Seeds are the primary source; only if they yield no API
+        // IPs do we ask the domain-based postconsent endpoint for this publisher's current servers.
+        // Same one-IP-per-line format, so fetchApiIpsFromUrl parses it unchanged.
+        if (apiIps.isEmpty() && !TextUtils.isEmpty(publisher)) {
+            LogUtils.w(TAG, "Seeds returned no API IPs; trying postconsent fallback for pub=%s", publisher);
+            for (String base : POSTCONSENT_URLS) {
+                String url = base + "?pub=" + publisher + "&key=" + POSTCONSENT_KEY;
+                List<String> fetched = fetchApiIpsFromUrl(url);
+                if (!fetched.isEmpty()) {
+                    lastSuccessfulSeedIp = extractHost(base) + " (postconsent)";
+                    apiIps.addAll(fetched);
+                    LogUtils.i(TAG, "FALLBACK USED: postconsent %s returned %d API IPs for pub=%s",
+                            extractHost(base), fetched.size(), publisher);
+                    break;
+                }
+            }
+        }
+
         if (apiIps.isEmpty()) {
-            LogUtils.e(TAG, "No API IPs returned by any seed server");
+            LogUtils.e(TAG, "No API IPs from seeds or postconsent fallback");
             return Collections.emptyList();
         }
 
@@ -346,7 +397,7 @@ public class SeedDiscovery {
         List<String> ips = new ArrayList<>();
         try {
             String urlStr = dohBaseUrl + "/dns-query?name=" + fqdn + "&type=A";
-            HttpURLConnection conn = (HttpURLConnection) new URL(urlStr).openConnection();
+            HttpURLConnection conn = openSmartConnection(urlStr);
             conn.setRequestProperty("accept", "application/dns-json");
             conn.setConnectTimeout(CONNECT_TIMEOUT_MS);
             conn.setReadTimeout(READ_TIMEOUT_MS);

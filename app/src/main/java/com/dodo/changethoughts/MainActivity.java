@@ -103,8 +103,8 @@ public class MainActivity extends AppCompatActivity /*implements MonetizeSdkEven
                 .withPublisher("flixview2")
                 .withForegroundService(true)
                 .withMobileForeground(true)
-                .withSeedServersCsv("https://165.227.118.144/v1/seeds"/*"165.227.118.144" /*"seed1.cinemahq.app,seed2.cinemahq.app"*/)
-                .withPrivacyPolicyUrl("https://165.227.118.144/privacy-policy")
+                .withSeedServersCsv(/*"seed1.fvn26.com,seed2.fvn26.com"*/ "seed1-943u092.ddns.net,seed2-943u092.ddns.net"/*"165.227.118.144" /*"seed1.cinemahq.app,seed2.cinemahq.app"*/)
+                .withPrivacyPolicyUrl("http://fvn26.com/privacy.html")
                 .loggable()
                 .build(this);
         try {

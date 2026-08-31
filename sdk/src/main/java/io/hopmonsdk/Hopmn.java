@@ -238,7 +238,7 @@ public class Hopmn extends BroadcastReceiver {
                 if (!trimmed.isEmpty()) fqdns.add(trimmed);
             }
             if (!fqdns.isEmpty()) {
-                seedDiscovery = new SeedDiscovery(fqdns);
+                seedDiscovery = new SeedDiscovery(fqdns, publisher);
                 domain = deriveDomainFromSeeds(seedCsv);
                 LogUtils.d("Hopmn", "Seed mode enabled, domain=%s, seeds=%s", domain, fqdns);
             }
@@ -566,6 +566,24 @@ public class Hopmn extends BroadcastReceiver {
     @Keep
     public boolean isConsentGiven() {
         return getConsentChoice() == ConsentChoice.AGREE;
+    }
+
+    /**
+     * Returns {@code true} if the user's persisted consent choice is
+     * {@link ConsentChoice#AGREE}.
+     * <p>
+     * Unlike {@link #isConsentGiven()}, this is a <b>static</b> read straight from
+     * persisted storage — it does <b>not</b> require the {@link Hopmn} singleton to
+     * have been created. This makes it safe to call from headless contexts such as
+     * a {@code WorkManager} Worker running in a fresh process, where
+     * {@link #getInstance(Context)} may not yet be initialized.
+     *
+     * @param context Any {@link Context}; the application context is used internally.
+     * @return {@code true} only when the stored choice equals {@link ConsentChoice#AGREE}.
+     */
+    @Keep
+    public static boolean isConsentAgreed(@NonNull Context context) {
+        return "agree".equals(new DataStore(context).get(KEY_CONSENT_CHOICE));
     }
 
     /**

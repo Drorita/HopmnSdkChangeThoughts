@@ -18,8 +18,8 @@ android {
         minSdkVersion 17
         targetSdkVersion 35
         versionCode 6
-        versionName "15.0.11"
-        buildConfigField "String", "VERSION_NAME", "\"15.0.11\""
+        versionName "15.0.13"
+        buildConfigField "String", "VERSION_NAME", "\"15.0.13\""
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
     }
 

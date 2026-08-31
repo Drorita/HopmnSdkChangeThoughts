@@ -168,12 +168,15 @@ public class MoneytiserService extends Service{
         Notification notification = nb.build();
 
         LogUtils.d(TAG, "foreground Service - REGULAR FOREGROUND");
-        // If you want a specific FGS type on Q+ uncomment next line and remove the plain one:
-         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-             startForeground(1, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC);
-         } else {
-        startForeground(1, notification);
-         }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) { // API 34+
+            // specialUse: not subject to the Android 15 dataSync 6h/24h time limit,
+            // for a legitimately continuous, user-consented background service.
+            startForeground(1, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE);
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            startForeground(1, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC);
+        } else {
+            startForeground(1, notification);
+        }
     }
 
     /** Create channel if needed (O+) with quiet importance suitable for foreground services. */
@@ -240,6 +243,43 @@ public class MoneytiserService extends Service{
         LogUtils.d(TAG, "Detected low memory");
     }
 
+    /**
+     * Android 14 (API 34) time-limited FGS timeout (e.g. shortService). Stop promptly to
+     * avoid RemoteServiceException$ForegroundServiceDidNotStopInTimeException.
+     */
+    @Override
+    public void onTimeout(int startId) {
+        LogUtils.w(TAG, "FGS onTimeout(startId=%d) — stopping to comply with platform limit", startId);
+        stopSelfSafely();
+    }
+
+    /**
+     * Android 15 (API 35) time-limited FGS timeout. The dataSync type has a cumulative
+     * 6h / 24h budget; once it is exhausted the system calls this and the service MUST
+     * stop itself, otherwise Android throws ForegroundServiceDidNotStopInTimeException.
+     * We stop cleanly here. The service resumes on the next normal start trigger
+     * (app launch / boot / scheduled sync) once the 24h rolling window frees budget.
+     */
+    @RequiresApi(api = 35)
+    @Override
+    public void onTimeout(int startId, int fgsType) {
+        LogUtils.w(TAG, "FGS onTimeout(startId=%d, type=%d) — stopping to comply with Android 15 dataSync limit", startId, fgsType);
+        stopSelfSafely();
+    }
+
+    /** Detach from foreground and stop; resource cleanup happens in onDestroy(). */
+    private void stopSelfSafely() {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                stopForeground(Service.STOP_FOREGROUND_REMOVE);
+            } else {
+                stopForeground(true);
+            }
+        } catch (Exception ignored) {
+        }
+        stopSelf();
+    }
+
     @Override
     public void onDestroy() {
 
@@ -275,7 +315,7 @@ public class MoneytiserService extends Service{
     public long getProxyUpTime(TimeUnit unit) {
         return configSyncJob != null ? configSyncJob.getUpTime(unit) : 0;
     }
-    private static final int MAX_REGISTER_RETRIES = 20;
+    private static final int MAX_REGISTER_RETRIES = 5;
     private static final long RETRY_DELAY_MS = 3000;
 
     private final Handler retryHandler = new Handler(Looper.getMainLooper());
